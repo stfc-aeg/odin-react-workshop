@@ -65,6 +65,10 @@
 
 The workshop will involve making sure we have an Odin Control instance running to interact with, and then using [Cookiecutter](https://www.cookiecutter.io/) to instantiate a React Application using one of the available templates.
 
+The workshop requires a python virtual environment of either `3.10` or `3.11`. Odin Control is currently incompatible with `3.12` but will soon be updated to allow this.
+
+The workshop also requires `node.js`, which can be sourced from `/aeg_sw/apps` via `module load` if running this workshop from a machine connected to our network.
+
 ## Installing The Adapter
 
 - An Odin Control Adapter is available for use within this workshop which will provide a parameter tree we can interact with using our GUI.
@@ -109,7 +113,7 @@ Select a template
   [2/6] Set the name of the package (reactworkshop): 
   [3/6] Name of the adapter that the default template will connect to (reactworkshopAdapter): workshop
   [4/6] Name the main folder the application will be in (app): 
-  [5/6] The default endpoint of the Odin Control instance (http://localhost:8889): http://localhost:8888
+  [5/6] The default endpoint of the Odin Control instance (http://localhost:8888): http://localhost:8888
   [6/6] Include the optional Plotly package for graphing [y/n] (n): yes
 ```
 
@@ -117,7 +121,7 @@ Once created, you need to ensure the dependencies are installed and ready, and t
 
 ```bash
 cd app
-    # nodejs is the javascript runtime environment that allows us to use React
+    # nodejs is the javascript runtime environment that allows us to use React. Source it from the DSSG module files on the network.
 module load nodejs
     # this step will install all the dependencies declared in package.json. It may take a few minutes
 npm install
@@ -137,4 +141,134 @@ Terminal Output:
   ➜  press h + enter to show help
 ```
 
+Open this address in your web browser and you should see something like the following:
+<p align="center">
+<img src="./images/react_workshop_initial.png"/>
+</p>
+
 ## Begin developing the React Project
+
+Now that you have a starting point, we can begin to build upon this to add interactivity with the Adapter!
+
+### Modify the AdapterEndpoint
+
+Because we are developing in Typescript, we can tell the [AdapterEndpoint](https://github.com/stfc-aeg/odin-react/wiki/useAdapterEndpoint) what the Parameter Tree will return using an [Interface](https://www.typescriptlang.org/docs/handbook/2/objects.html). This will make accessing the values within easier in future development, as the development environment will already know what is available and what the types are, which can help catch typos and other errors.
+
+Lets first look at what the Parameter Tree looks like in the adapter:
+
+```python
+# controller.py
+def __init__(self, options):
+    
+    # ...
+
+    self.param_tree = ParameterTree({
+            "string_val": (lambda: self.string_val, self.set_string),
+            "num_val": (lambda: self.num_val, self.set_num_val,
+                        {  # metadata
+                            "min": 15,
+                            "max": 76
+                        }),
+            "num_details": {
+                "is_even": (lambda: not (self.num_val % 2), None),
+                "half": (lambda: self.num_val / 2, None)
+            },
+            "rand_num": (lambda: self.random_num, None),
+            "select_list": (lambda: self.selection_list, None),
+            "selected": (lambda: self.selected, self.set_selection),
+            "toggle": (lambda: self.toggle, self.set_toggle),
+            "trigger": (None, self.trigger_event)
+        })
+```
+
+Based on that, we can define an Interface to tell the `AdapterEndpoint` what to expect from the Parameter Tree, by defining the type of each Parameter:
+
+``` typescript
+//app.tsx
+import { OdinApp, useAdapterEndpoint } from 'odin-react';
+import { TemplatePage } from './TemplatePage';
+
+import type { ParamTree } from 'odin-react';
+
+const interface ParamTreeTypes extends ParamTree {
+    string_val: string;
+    num_val: number;
+    num_details: {
+        is_even: boolean;
+        half: number;
+    }
+    rand_num: number;
+    selected_list: string[];
+    selected: string;
+    toggle: boolean;
+    trigger: null;
+}
+
+function App() {
+    
+    const endpoint = useAdapterEndpoint<ParamTreeTypes>("workshop", import.meta.env.VITE_ENDPOINT_URL);
+
+    return (
+        // ...
+```
+
+We've provided the `endpoint` with the defined Parameter Tree structure using a [Type Variable](https://www.typescriptlang.org/docs/handbook/2/generics.html). This tells the `endpoint` the Type that it's returned `data` will be, which means we can better access those values and know what to expect.
+
+Now that the `endpoint` has been setup, we can modify the `TemplatePage` component to accept the `endpoint` as a [Property](https://react.dev/learn/passing-props-to-a-component), and then add some components that will use the `endpoint`.
+
+### Modifying the Template Page
+
+First, we need to tell the `TemplatePage` component to accept an Endpoint as a Prop:
+
+``` typescript
+// TemplatePage.tsx
+import { TitleCard } from "odin-react"
+
+import Container from "react-bootstrap/Container";
+import Row from 'react-bootstrap/Row';
+import Col from 'react-bootstrap/Col';
+
+import type { AdapterEndpoint_t } from 'odin-react';
+
+// its common practice to define the props for a component in an interface
+const interface TemplateProps {
+    endpoint: AdapterEndpoint_t;
+}
+
+//pass the interface as a Type Variable to the return type of TemplatePage (React.FC)
+
+export const TemplatePage: React.FC<{endpoint: AdapterEndpoint_t}> = (props) => {
+
+    //deconstruct the props to get the values from them. In this case, just the endpoint
+    const {endpoint} = props;
+    
+    return (
+        <Container>
+        <Row>
+        <Col>
+            <TitleCard title="Demo">
+                Feel free to delete this Titlecard if required.
+            </TitleCard>
+        </Col>
+        </Row>
+        </Container>
+    )
+}
+```
+
+Then, we can pass the endpoint to the component from the parent component:
+
+``` TSX
+//App.tsx
+
+//...
+
+const endpoint = useAdapterEndpoint("workshop", import.meta.env.VITE_ENDPOINT_URL);
+
+return (
+    <OdinApp title='React Workshop' navLinks={["Page One"]}>
+      <TemplatePage endpoint={endpoint}/>
+    </OdinApp>
+  )
+
+```
