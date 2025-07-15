@@ -81,6 +81,7 @@ class WorkshopController(BaseController):
 
     def get(self, path, with_metadata=False):
         try:
+            logging.debug("GET request received at path: %s", path)
             return self.param_tree.get(path, with_metadata)
         except ParameterTreeError as error:
             logging.error(error)
@@ -88,6 +89,7 @@ class WorkshopController(BaseController):
 
     def set(self, path, data):
         try:
+            logging.debug("PUT request received at path: %s with data %s", path, data)
             self.param_tree.set(path, data)
         except ParameterTreeError as error:
             logging.error(error)

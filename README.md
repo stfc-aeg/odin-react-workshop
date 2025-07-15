@@ -41,7 +41,8 @@
 
 ### useAdapterEndpoint
 - Provides all the RESTful API methods to interact with the Odin Control Adapter Parameter Tree
-- Maintains a local copy of the Parameter tree and the Metadata, if the adapter supports it.
+- Maintains a local copy of the Parameter tree
+    - And the Metadata, if the adapter supports it.
 - Can be setup to make periodic requests of the Adapter to monitor updating data
 - Has error handling in case of HTTP errors, such as loss of connection or incorrectly done requests.
 
@@ -183,7 +184,7 @@ def __init__(self, options):
 
 Based on that, we can define an Interface to tell the `AdapterEndpoint` what to expect from the Parameter Tree, by defining the type of each Parameter:
 
-``` typescript
+``` TSX
 //app.tsx
 import { OdinApp, useAdapterEndpoint } from 'odin-react';
 import { TemplatePage } from './TemplatePage';
@@ -216,11 +217,14 @@ We've provided the `endpoint` with the defined Parameter Tree structure using a 
 
 Now that the `endpoint` has been setup, we can modify the `TemplatePage` component to accept the `endpoint` as a [Property](https://react.dev/learn/passing-props-to-a-component), and then add some components that will use the `endpoint`.
 
-### Modifying the Template Page
+### Passing the Endpoint as a Prop.
 
-First, we need to tell the `TemplatePage` component to accept an Endpoint as a Prop:
+First, we need to tell the `TemplatePage` component to accept an Endpoint as a Prop, so that any Child component of the page can also receive the endpoint, if required.
 
-``` typescript
+> [!NOTE]
+> In React, Props always flow from Parent to Child, not vice versa. This is why the default `endpoint` in the template gets created in the higher level `App` component and passed down; so that it can be used by multiple pages if required. This default can be moved within a specific page if only that page will require it.
+
+``` TSX
 // TemplatePage.tsx
 import { TitleCard } from "odin-react"
 
@@ -231,13 +235,12 @@ import Col from 'react-bootstrap/Col';
 import type { AdapterEndpoint_t } from 'odin-react';
 
 // its common practice to define the props for a component in an interface
-const interface TemplateProps {
+interface TemplateProps {
     endpoint: AdapterEndpoint_t;
 }
 
 //pass the interface as a Type Variable to the return type of TemplatePage (React.FC)
-
-export const TemplatePage: React.FC<{endpoint: AdapterEndpoint_t}> = (props) => {
+export const TemplatePage: React.FC<TemplateProps> = (props) => {
 
     //deconstruct the props to get the values from them. In this case, just the endpoint
     const {endpoint} = props;
@@ -261,7 +264,7 @@ Then, we can pass the endpoint to the component from the parent component:
 ``` TSX
 //App.tsx
 
-//...
+...
 
 const endpoint = useAdapterEndpoint("workshop", import.meta.env.VITE_ENDPOINT_URL);
 
@@ -272,3 +275,115 @@ return (
   )
 
 ```
+
+### Creating A Component that uses the Endpoint
+
+We now need to create a component that can use the `Endpoint` that can read and write one of the Parameters. We can do this with the [WithEndpoint](https://github.com/stfc-aeg/odin-react/wiki/WithEndpoint) Higher Order Component, which will return a component that has the required props and event handlers to make use of the `Endpoint`.
+
+Lets start with a [textbox](https://react-bootstrap.netlify.app/docs/forms/form-control):
+``` TSX
+// TemplatePage.tsx
+
+import { TitleCard } from "odin-react"
+//import the WithEndpoint wrapper from odin-react
+import { WithEndpoint } from 'odin-react';
+
+
+import Container from "react-bootstrap/Container";
+import Row from 'react-bootstrap/Row';
+import Col from 'react-bootstrap/Col';
+
+//import the Form component from bootstrap
+import Form from 'react-bootstrap/Form';
+
+import type { AdapterEndpoint_t } from 'odin-react';
+
+//declare a new component based on the Form.Control, using WithEndpoint
+//notice that we do not provide it with the endpoint or anything at this stage. We've basically just made a new component we can then use.
+const EndpointInput = WithEndpoint(Form.Control);
+
+...
+
+```
+
+> [!NOTE]
+> Components created using `WithEndpoint` automatically make some assumptions about what you want them to do depending on the type of component and data it points to in the `AdapterEndpoint`. A `WithEndpoint` wrapped Button will, for instance, assume you want it to trigger when clicked, with whatever value you provide.
+> 
+> If you do not provide a value, a `WithEndpoint` component will use the value read from the Parameter Tree, at whatever path you point it at.
+
+Now we've created this `EndpointInput` component, we can use it to interact with the Odin Control Adapter, via the `AdapterEndpoint`. This automates a lot of the data handling for the HTTP requests.
+
+We can also still treat it like the original `Form.Control` that it wraps, and so can label it using some of the other [Bootstrap Form Components](https://react-bootstrap.netlify.app/docs/forms/overview):
+
+``` TSX
+// TemplatePage.tsx
+
+import Form from 'react-bootstrap/Form';
+import InputGroup from 'react-bootstrap/InputGroup';
+
+...
+
+    return (
+        <Container>
+        <Row>
+        <Col>
+            <TitleCard title="Demo">
+                {/*endpoint and fullpath are the only two REQUIRED props for a WithEndpoint component*/}
+                <InputGroup>
+                    <InputGroup.Text>String Input</InputGroup.Text>
+                    <EndpointInput endpoint={endpoint} fullpath="string_val"/>
+                </InputGroup>
+            </TitleCard>
+        </Col>
+        </Row>
+        </Container>
+    )
+}
+```
+
+This textbox will automatically display the current value from the `AdapterEndpoint` Parameter Tree, and will do a PUT request to the path specified if you change the value and hit the Enter key. If we return to the browser, the changes made to the page should have been reloaded and the Input but now visible:
+
+<p align="center">
+<img src="./images/react_workshop_added_input.png"/>
+</p>
+
+And when changing the value, the input is highlighted to show that it has been modified:
+
+<p align="center">
+<img src="./images/react_workshop_changed_input.png"/>
+</p>
+
+If you then hit the Enter key whilst editing the text within the box, it will be sent to the Adapter. You should see something similar to the following in the terminal running Odin Control:
+
+```bash
+[D 250714 15:45:38 server:138] 204 OPTIONS /api/0.1/workshop (127.0.0.1) 1.05ms
+[D 250714 15:45:38 controller:92] PUT request received at path:  with data {'string_val': 'String Value'}
+[D 250714 15:45:38 controller:84] GET request received at path: 
+[D 250714 15:45:38 server:138] 200 PUT /api/0.1/workshop (127.0.0.1) 1.74ms
+```
+
+The `EndpointInput` component can also be used for other Parameters in the same way, including numerical ones.
+
+>[!NOTE]
+> `WithEndpoint` wrapped components will utilize the metadata provided by the Parameter Tree. If a Parameter is not defined as *Writeable*, the component will be disabled so that the user can visually see it is not an editable field.
+>
+> With numerical Parameters it will also use any *min* or *max* values defined in the metadata.
+
+`WithEndpoint` can also be used to create other endpoint connected components, like [buttons](https://react-bootstrap.netlify.app/docs/components/buttons) and [dropdowns](https://react-bootstrap.netlify.app/docs/components/dropdowns). It works the same way the `EndpointInput` did, automatically detecting what should trigger a PUT request.
+
+## Error Handling
+
+- The Templated project sets up some error handling mechanisms for the application.
+    - This will automatically display on screen any errors that may occur due to the Odin Control Adapter being inaccessible, or other issues with the HTTP requests.
+- Test this by shutting down the Odin Control instance and attempting to enter a new value for a parameter:
+
+<p align="center">
+<img src="./images/react_workshop_input_error.png"/>
+</p>
+
+## Layout
+
+- Odin React is designed to make use of the [Bootstrap Grid Layout](https://react-bootstrap.netlify.app/docs/layout/grid)
+- Organise page contents using the `Row` and `Col` components
+    - Bootstrap provides means to set the width of the columns as shown [Here](https://react-bootstrap.netlify.app/docs/layout/grid#setting-one-column-width). The grid classes shown split the width of the container into **12**, so setting a grid class to **6** would set it to take up half the space available.
+- Group related controls and components within a [Title Card](https://github.com/stfc-aeg/odin-react/wiki/TitleCard)
