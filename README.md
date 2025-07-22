@@ -461,7 +461,7 @@ useEffect(() => {
 }, [interval, PeriodicFunc]); //array of Dependencies
 ```
 
-> [!INFORMATION]
+> [!TIP]
 > If you want an Effect to run only when the component initially renders, pass it an **Empty Dependency Array**. If you don't pass it any dependency array, the effect will run **after every re-render of the component**.
 
 > [!WARNING]
