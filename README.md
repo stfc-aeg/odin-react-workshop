@@ -387,3 +387,86 @@ The `EndpointInput` component can also be used for other Parameters in the same 
 - Organise page contents using the `Row` and `Col` components
     - Bootstrap provides means to set the width of the columns as shown [Here](https://react-bootstrap.netlify.app/docs/layout/grid#setting-one-column-width). The grid classes shown split the width of the container into **12**, so setting a grid class to **6** would set it to take up half the space available.
 - Group related controls and components within a [Title Card](https://github.com/stfc-aeg/odin-react/wiki/TitleCard)
+
+## React Hooks
+
+[Hooks](https://react.dev/reference/react/hooks) are a React feature that allow you to add different features to React Components. React provides a handful of build-in Hooks that are useful to know about.
+
+Hooks can only be used at the **Top Level of a Component**. They cannot be
+
+### [useState](https://react.dev/reference/react/useState)
+
+- Components sometimes need to "remember" information, such as user input. This kind of component-specific memory is called [State](https://react.dev/learn/state-a-components-memory).
+
+- We can't use standard variables for this, as they won't persist between renders. When React re-renders a component due to any changes, it won't consider changes made to local variables.
+
+- `useState` is a Hook that lets you add this state to your component in a way that will persist, even if the component gets re-rendered. This state will also trigger React to render the component with the new data.
+
+```tsx
+import { useState } from 'react';
+
+...
+
+const [state, setState] = useState(initialState);
+```
+
+- The hook provides two things, a **State Value** (`state`), and a **State Setter Function** (`setState`) to update that state.
+- Calling the **Setter Function** with a new value will update the **State Value** when the component is re-rendered.
+- The **Setter Function** can set state based on previous state by passing an **Updater Function**:
+  ``` tsx
+  setState(oldState => oldState + 1);
+  ```
+
+> [!WARNING]
+> The **Setter Function** does not update the **State Value** in currently running code. It instead requests a re-render of the component will the new state. That means that you cannot update a state within a function and then use the updated **State Value** straight away within that same function:
+> ``` tsx
+> const [count, setCount] = useState(0);
+>
+> function handleClick() {
+>    console.log(count) // 0
+>
+>    setCount(count + 1); // Request rerender with 1
+>    console.log(count); // still 0!
+> }
+> ```
+
+### [useCallback](https://react.dev/reference/react/useCallback)
+
+- Caches a function definition between re-renders, and only re-defines that function if any of it's **Dependencies** change
+
+``` tsx
+const cachedFunc = useCallback(Func, dependencies);
+```
+
+- Dependencies is a list of *Reactive Values* (Such as State or Props) within the function that might change. If any of these values change, the callback updates the method to use the new values.
+- [Linters](https://eslint.org/) configured for React will verify that every *Reactive Value* within a function is specified as a dependency. It is unusual for a callback to not require every *Reactive Value* as a dependency, as missing dependencies means a callback runs the risk of running with stale State, or old values.
+
+### [useEffect](https://react.dev/reference/react/useEffect)
+
+- Runs an Effect whenever one of its **Dependencies** changes.
+- Will run when the component first loads
+- The Effect can return a *Cleanup* function that will run first when the dependencies change with the old values, before running the effect
+- Often used with [setInterval](https://developer.mozilla.org/en-US/docs/Web/API/Window/setInterval) to call a function repeatedly
+
+``` tsx
+
+const interval = 1000;
+
+useEffect(() => {
+    const timer_id = setInterval(PeriodicFunc, interval);  // run PeriodicFunc every second
+
+    return () => {
+        clearInterval(timer_id); //cleanup code
+    }
+}, [interval, PeriodicFunc]); //array of Dependencies
+```
+
+> [!INFORMATION]
+> If you want an Effect to run only when the component initially renders, pass it an **Empty Dependency Array**. If you don't pass it any dependency array, the effect will run **after every re-render of the component**.
+
+> [!WARNING]
+> **Using Objects in Dependency Arrays is a Bad Idea**
+>
+> Because of the way React compares Objects, putting an object into a Hook's *Dependency Array* will cause that hook to re-run at every render.
+>
+> The [React Docs](https://react.dev/learn/removing-effect-dependencies#does-some-reactive-value-change-unintentionally) have more details about why this happens, and how to negate the issue.
