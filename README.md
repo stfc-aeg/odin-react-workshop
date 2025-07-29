@@ -115,7 +115,7 @@ Select a template
   [3/6] Name of the adapter that the default template will connect to (reactworkshopAdapter): workshop
   [4/6] Name the main folder the application will be in (app): 
   [5/6] The default endpoint of the Odin Control instance (http://localhost:8888): http://localhost:8888
-  [6/6] Include the optional Plotly package for graphing [y/n] (n): yes
+  [6/6] Include the optional Plotly package for graphing [y/n] (n): no
 ```
 
 Once created, you need to ensure the dependencies are installed and ready, and then you can start developing the app:
@@ -191,7 +191,7 @@ import { TemplatePage } from './TemplatePage';
 
 import type { ParamTree } from 'odin-react';
 
-const interface ParamTreeTypes extends ParamTree {
+export interface ParamTreeTypes extends ParamTree {
     string_val: string;
     num_val: number;
     num_details: {
@@ -232,11 +232,15 @@ import Container from "react-bootstrap/Container";
 import Row from 'react-bootstrap/Row';
 import Col from 'react-bootstrap/Col';
 
+// import the types we need to define the Prop
 import type { AdapterEndpoint_t } from 'odin-react';
+import type { ParamTreeTypes } from "./App";
 
 // its common practice to define the props for a component in an interface
 interface TemplateProps {
-    endpoint: AdapterEndpoint_t;
+    //define a prop called "endpoint" that is an Endpoint,
+    // which returns data that matches the shape of ParamTreeTypes
+    endpoint: AdapterEndpoint_t<ParamTreeTypes>;
 }
 
 //pass the interface as a Type Variable to the return type of TemplatePage (React.FC)
@@ -276,9 +280,80 @@ return (
 
 ```
 
+### Using the Endpoint Data
+
+- The endpoint provides a `data` object we can reference to display our parameters.
+- Since we previously used the `interface` to tell the endpoint whats available on the Parameter Tree, accessing those defined parameters is simple
+
+We can add a label to the GUI that displays the current value of the `rand_num` parameter. This number gets updated periodically, so we can watch it for changes.
+
+``` TSX
+
+// Other Imports
+...
+
+import Badge from "react-bootstrap/Badge";
+
+// its common practice to define the props for a component in an interface
+interface TemplateProps {
+    endpoint: AdapterEndpoint_t<ParamTreeTypes>;
+}
+
+export const TemplatePage: React.FC<TemplateProps> = (props) => {
+
+    const {endpoint} = props;
+
+    return (
+        <Container>
+        <Row>
+        <Col>
+            <TitleCard title="Demo">
+                {/* Get the parameter out of the tree just using Dot Notation */}
+                Random Number: <Badge>{endpoint.data.rand_num}</Badge>
+            </TitleCard>
+        </Col>
+        </Row>
+        </Container>
+    )
+}
+
+```
+
+If we return to the browser, the changes made to the page should have been reloaded and the Input but now visible:
+
+<p align="center">
+<img src="./images/react_workshop_added_badge.png"/>
+</p>
+
+However, this displayed number is not changing, even though the one in the adapter is. It only changes when we reload the page.
+This is because our AdapterEndpoint only `GETS` from the API when it's told to, which in this example is only when it first loads.
+We can tell it to constantly poll by making it `Periodic`. We do that by providing it with a value in milliseconds for how often to perform this `GET` request and update the data in the GUI
+
+``` TSX
+//app.tsx
+...
+
+function App() {
+    // an Interval of 1000 means it will do a GET request every second and refresh itself.
+    const endpoint = useAdapterEndpoint<ParamTreeTypes>("workshop", import.meta.env.VITE_ENDPOINT_URL, 1000);
+
+    ...
+```
+Make this change, and then return to the Browser to see that the number now updates. You can also see that it is working by checking the output from `Odin Control` and see the repeated GET requests:
+```bash
+[D 250729 14:41:19 controller:84] GET request received at path: 
+[D 250729 14:41:19 server:138] 200 GET /api/0.1/workshop (127.0.0.1) 1.33ms
+[D 250729 14:41:20 controller:84] GET request received at path: 
+[D 250729 14:41:20 server:138] 200 GET /api/0.1/workshop (127.0.0.1) 1.36ms
+[D 250729 14:41:21 controller:84] GET request received at path: 
+[D 250729 14:41:21 server:138] 200 GET /api/0.1/workshop (127.0.0.1) 1.34ms
+[D 250729 14:41:22 controller:84] GET request received at path: 
+[D 250729 14:41:22 server:138] 200 GET /api/0.1/workshop (127.0.0.1) 1.30ms
+```
+
 ### Creating A Component that uses the Endpoint
 
-We now need to create a component that can use the `Endpoint` that can read and write one of the Parameters. We can do this with the [WithEndpoint](https://github.com/stfc-aeg/odin-react/wiki/WithEndpoint) Higher Order Component, which will return a component that has the required props and event handlers to make use of the `Endpoint`.
+We now need to create a component that can not only read from the `endpoint`, but write to the Parameters. We can do this with the [WithEndpoint](https://github.com/stfc-aeg/odin-react/wiki/WithEndpoint) Higher Order Component, which will return a component that has the required props and event handlers to make use of the `Endpoint`.
 
 Lets start with a [textbox](https://react-bootstrap.netlify.app/docs/forms/form-control):
 ``` TSX
@@ -292,6 +367,8 @@ import { WithEndpoint } from 'odin-react';
 import Container from "react-bootstrap/Container";
 import Row from 'react-bootstrap/Row';
 import Col from 'react-bootstrap/Col';
+
+import Badge from "react-bootstrap/Badge";
 
 //import the Form component from bootstrap
 import Form from 'react-bootstrap/Form';
@@ -328,6 +405,12 @@ import InputGroup from 'react-bootstrap/InputGroup';
         <Row>
         <Col>
             <TitleCard title="Demo">
+                {/* Get the parameter out of the tree just using Dot Notation */}
+                Random Number: <Badge>{endpoint.data.rand_num}</Badge>
+            </TitleCard>
+        </Col>
+        <Col> {/*We can do the input in a separate Titlecard to demonstrate how the Rols/Cols work*/}
+            <TitleCard title="WithEndpoint">
                 {/*endpoint and fullpath are the only two REQUIRED props for a WithEndpoint component*/}
                 <InputGroup>
                     <InputGroup.Text>String Input</InputGroup.Text>
@@ -380,6 +463,15 @@ The `EndpointInput` component can also be used for other Parameters in the same 
 <p align="center">
 <img src="./images/react_workshop_input_error.png"/>
 </p>
+
+- It can be worth creating fallback values for things like the Badge that display the value, in case the data isn't available straight away. This can be done with a [Nullish Coalescing Operator](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/Nullish_coalescing)
+
+```TSX
+<TitleCard title="Demo">
+    {/* Get the parameter out of the tree just using Dot Notation */}
+    Random Number: <Badge>{endpoint.data.rand_num ?? "Undefined"}</Badge>
+</TitleCard>
+```
 
 ## Layout
 
