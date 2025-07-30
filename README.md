@@ -335,7 +335,8 @@ We can tell it to constantly poll by making it `Periodic`. We do that by providi
 
 function App() {
     // an Interval of 1000 means it will do a GET request every second and refresh itself.
-    const endpoint = useAdapterEndpoint<ParamTreeTypes>("workshop", import.meta.env.VITE_ENDPOINT_URL, 1000);
+    const endpoint = useAdapterEndpoint<ParamTreeTypes>
+    ("workshop", import.meta.env.VITE_ENDPOINT_URL, 1000);
 
     ...
 ```
@@ -453,6 +454,54 @@ The `EndpointInput` component can also be used for other Parameters in the same 
 > With numerical Parameters it will also use any *min* or *max* values defined in the metadata.
 
 `WithEndpoint` can also be used to create other endpoint connected components, like [buttons](https://react-bootstrap.netlify.app/docs/components/buttons) and [dropdowns](https://react-bootstrap.netlify.app/docs/components/dropdowns). It works the same way the `EndpointInput` did, automatically detecting what should trigger a PUT request.
+
+### Another WithEndpoint Component
+
+Lets now make a second component that can interact with the Adapter in a similar way to the textbox previously created. This time, we'll make a [Button](https://react-bootstrap.netlify.app/docs/components/buttons)
+
+We can once again wrap the `Button` component with the `WithEndpoint` HOC to create another new Component with all the required Props.
+
+```TSX
+
+...
+import Button from "react-bootstrap/Button";
+
+const EndpointInput = WithEndpoint(Form.Control);
+const EndpointButton = WithEndpoint(Button);
+
+```
+
+Like before, we can use this component within our Template page. This time, we want to provide it with a value that it will send to the Adapter when clicked, instead of it reading the initial value from the adapter like the Textbox example does.
+
+We can also provide it with any of the `props` that the wrapped component would use. These `props` get ignored by the `WithEndpoint` layer, and passed down through to the underlying component; in this case, the `Button`. We can demonstrate this by using the `variant` prop of the button.
+
+```TSX
+
+...
+
+<InputGroup>
+    <InputGroup.Text>String Input</InputGroup.Text>
+    <EndpointInput endpoint={endpoint} fullpath="string_val"/>
+    {/*Use the EndpointButton component, passing it a value and a Variant for styling*/}
+    <EndpointButton endpoint={endpoint} fullpath="trigger" 
+    value="Triggered Value" variant="success">
+        Trigger
+    </EndpointButton>
+</InputGroup>
+
+...
+
+```
+<p align="center">
+<img src="./images/react_workshop_added_button.png"/>
+</p>
+
+> [!NOTE]
+> When assigning a value to a WithEndpoint wrapped component, that value does not have to be hardcoded in the way demonstrated above. It could just as easily be the value written into a textbox, or a State, or calculated from anything else within the GUI.
+
+### Exercise: Make a Toggle Endpoint
+
+Now try to create another Endpoint connected component using the same method as before. Try using the [Bootstrap Switch](https://react-bootstrap.netlify.app/docs/forms/checks-radios#switches) to set the boolean parameter `toggle`.
 
 ## Error Handling
 
