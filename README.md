@@ -191,6 +191,7 @@ import { TemplatePage } from './TemplatePage';
 
 import type { ParamTree } from 'odin-react';
 
+//the EXPORT keyword means we can import this interface in other files, like TemplatePage.tsx
 export interface ParamTreeTypes extends ParamTree {
     string_val: string;
     num_val: number;
@@ -213,7 +214,9 @@ function App() {
         // ...
 ```
 
-We've provided the `endpoint` with the defined Parameter Tree structure using a [Type Variable](https://www.typescriptlang.org/docs/handbook/2/generics.html). This tells the `endpoint` the Type that it's returned `data` will be, which means we can better access those values and know what to expect.
+We've provided the `endpoint` with the defined Parameter Tree structure using a [Type Variable](https://www.typescriptlang.org/docs/handbook/2/generics.html). This tells the `endpoint` the Type that its returned `data` will be, which means we can better access those values and know what to expect.
+
+Because Typescript compiles to standard Javascript, this doesn't mean that the endpoint can ONLY have the data structure, but allows us to know what will be available during development.
 
 Now that the `endpoint` has been setup, we can modify the `TemplatePage` component to accept the `endpoint` as a [Property](https://react.dev/learn/passing-props-to-a-component), and then add some components that will use the `endpoint`.
 
@@ -533,7 +536,8 @@ Now try to create another Endpoint connected component using the same method as 
 
 [Hooks](https://react.dev/reference/react/hooks) are a React feature that allow you to add different features to React Components. React provides a handful of build-in Hooks that are useful to know about.
 
-Hooks can only be used at the **Top Level of a Component**. They cannot be
+> [!WARNING]
+> Hooks can only be used at the **Top Level of a Component**. They cannot be used within functions or any sort of conditional or loop. Hooks can only be called with React is rendering a functional component (I.E: during the main body of the function, before any return statement)
 
 ### [useState](https://react.dev/reference/react/useState)
 
@@ -573,7 +577,7 @@ const [state, setState] = useState(initialState);
 
 ### [useCallback](https://react.dev/reference/react/useCallback)
 
-- Caches a function definition between re-renders, and only re-defines that function if any of it's **Dependencies** change
+- Caches a function definition between re-renders, and only re-defines that function if any of its **Dependencies** change
 
 ``` tsx
 const cachedFunc = useCallback(Func, dependencies);
