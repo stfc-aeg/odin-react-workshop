@@ -115,7 +115,7 @@ Select a template
   [3/6] Name of the adapter that the default template will connect to (reactworkshopAdapter): workshop
   [4/6] Name the main folder the application will be in (app): 
   [5/6] The default endpoint of the Odin Control instance (http://localhost:8888): http://localhost:8888
-  [6/6] Include the optional Plotly package for graphing [y/n] (n): yes
+  [6/6] Include the optional Plotly package for graphing [y/n] (n): no
 ```
 
 Once created, you need to ensure the dependencies are installed and ready, and then you can start developing the app:
@@ -191,7 +191,8 @@ import { TemplatePage } from './TemplatePage';
 
 import type { ParamTree } from 'odin-react';
 
-const interface ParamTreeTypes extends ParamTree {
+//the EXPORT keyword means we can import this interface in other files, like TemplatePage.tsx
+export interface ParamTreeTypes extends ParamTree {
     string_val: string;
     num_val: number;
     num_details: {
@@ -213,7 +214,9 @@ function App() {
         // ...
 ```
 
-We've provided the `endpoint` with the defined Parameter Tree structure using a [Type Variable](https://www.typescriptlang.org/docs/handbook/2/generics.html). This tells the `endpoint` the Type that it's returned `data` will be, which means we can better access those values and know what to expect.
+We've provided the `endpoint` with the defined Parameter Tree structure using a [Type Variable](https://www.typescriptlang.org/docs/handbook/2/generics.html). This tells the `endpoint` the Type that its returned `data` will be, which means we can better access those values and know what to expect.
+
+Because Typescript compiles to standard Javascript, this doesn't mean that the endpoint can ONLY have the data structure, but allows us to know what will be available during development.
 
 Now that the `endpoint` has been setup, we can modify the `TemplatePage` component to accept the `endpoint` as a [Property](https://react.dev/learn/passing-props-to-a-component), and then add some components that will use the `endpoint`.
 
@@ -232,11 +235,15 @@ import Container from "react-bootstrap/Container";
 import Row from 'react-bootstrap/Row';
 import Col from 'react-bootstrap/Col';
 
+// import the types we need to define the Prop
 import type { AdapterEndpoint_t } from 'odin-react';
+import type { ParamTreeTypes } from "./App";
 
 // its common practice to define the props for a component in an interface
 interface TemplateProps {
-    endpoint: AdapterEndpoint_t;
+    //define a prop called "endpoint" that is an Endpoint,
+    // which returns data that matches the shape of ParamTreeTypes
+    endpoint: AdapterEndpoint_t<ParamTreeTypes>;
 }
 
 //pass the interface as a Type Variable to the return type of TemplatePage (React.FC)
@@ -276,9 +283,81 @@ return (
 
 ```
 
+### Using the Endpoint Data
+
+- The endpoint provides a `data` object we can reference to display our parameters.
+- Since we previously used the `interface` to tell the endpoint whats available on the Parameter Tree, accessing those defined parameters is simple
+
+We can add a label to the GUI that displays the current value of the `rand_num` parameter. This number gets updated periodically, so we can watch it for changes.
+
+``` TSX
+
+// Other Imports
+...
+
+import Badge from "react-bootstrap/Badge";
+
+// its common practice to define the props for a component in an interface
+interface TemplateProps {
+    endpoint: AdapterEndpoint_t<ParamTreeTypes>;
+}
+
+export const TemplatePage: React.FC<TemplateProps> = (props) => {
+
+    const {endpoint} = props;
+
+    return (
+        <Container>
+        <Row>
+        <Col>
+            <TitleCard title="Demo">
+                {/* Get the parameter out of the tree just using Dot Notation */}
+                Random Number: <Badge>{endpoint.data.rand_num}</Badge>
+            </TitleCard>
+        </Col>
+        </Row>
+        </Container>
+    )
+}
+
+```
+
+If we return to the browser, the changes made to the page should have been reloaded and the Input but now visible:
+
+<p align="center">
+<img src="./images/react_workshop_added_badge.png"/>
+</p>
+
+However, this displayed number is not changing, even though the one in the adapter is. It only changes when we reload the page.
+This is because our AdapterEndpoint only `GETS` from the API when it's told to, which in this example is only when it first loads.
+We can tell it to constantly poll by making it `Periodic`. We do that by providing it with a value in milliseconds for how often to perform this `GET` request and update the data in the GUI
+
+``` TSX
+//app.tsx
+...
+
+function App() {
+    // an Interval of 1000 means it will do a GET request every second and refresh itself.
+    const endpoint = useAdapterEndpoint<ParamTreeTypes>
+    ("workshop", import.meta.env.VITE_ENDPOINT_URL, 1000);
+
+    ...
+```
+Make this change, and then return to the Browser to see that the number now updates. You can also see that it is working by checking the output from `Odin Control` and see the repeated GET requests:
+```bash
+[D 250729 14:41:19 controller:84] GET request received at path: 
+[D 250729 14:41:19 server:138] 200 GET /api/0.1/workshop (127.0.0.1) 1.33ms
+[D 250729 14:41:20 controller:84] GET request received at path: 
+[D 250729 14:41:20 server:138] 200 GET /api/0.1/workshop (127.0.0.1) 1.36ms
+[D 250729 14:41:21 controller:84] GET request received at path: 
+[D 250729 14:41:21 server:138] 200 GET /api/0.1/workshop (127.0.0.1) 1.34ms
+[D 250729 14:41:22 controller:84] GET request received at path: 
+[D 250729 14:41:22 server:138] 200 GET /api/0.1/workshop (127.0.0.1) 1.30ms
+```
+
 ### Creating A Component that uses the Endpoint
 
-We now need to create a component that can use the `Endpoint` that can read and write one of the Parameters. We can do this with the [WithEndpoint](https://github.com/stfc-aeg/odin-react/wiki/WithEndpoint) Higher Order Component, which will return a component that has the required props and event handlers to make use of the `Endpoint`.
+We now need to create a component that can not only read from the `endpoint`, but write to the Parameters. We can do this with the [WithEndpoint](https://github.com/stfc-aeg/odin-react/wiki/WithEndpoint) Higher Order Component, which will return a component that has the required props and event handlers to make use of the `Endpoint`.
 
 Lets start with a [textbox](https://react-bootstrap.netlify.app/docs/forms/form-control):
 ``` TSX
@@ -292,6 +371,8 @@ import { WithEndpoint } from 'odin-react';
 import Container from "react-bootstrap/Container";
 import Row from 'react-bootstrap/Row';
 import Col from 'react-bootstrap/Col';
+
+import Badge from "react-bootstrap/Badge";
 
 //import the Form component from bootstrap
 import Form from 'react-bootstrap/Form';
@@ -328,6 +409,12 @@ import InputGroup from 'react-bootstrap/InputGroup';
         <Row>
         <Col>
             <TitleCard title="Demo">
+                {/* Get the parameter out of the tree just using Dot Notation */}
+                Random Number: <Badge>{endpoint.data.rand_num}</Badge>
+            </TitleCard>
+        </Col>
+        <Col> {/*We can do the input in a separate Titlecard to demonstrate how the Rols/Cols work*/}
+            <TitleCard title="WithEndpoint">
                 {/*endpoint and fullpath are the only two REQUIRED props for a WithEndpoint component*/}
                 <InputGroup>
                     <InputGroup.Text>String Input</InputGroup.Text>
@@ -371,6 +458,54 @@ The `EndpointInput` component can also be used for other Parameters in the same 
 
 `WithEndpoint` can also be used to create other endpoint connected components, like [buttons](https://react-bootstrap.netlify.app/docs/components/buttons) and [dropdowns](https://react-bootstrap.netlify.app/docs/components/dropdowns). It works the same way the `EndpointInput` did, automatically detecting what should trigger a PUT request.
 
+### Another WithEndpoint Component
+
+Lets now make a second component that can interact with the Adapter in a similar way to the textbox previously created. This time, we'll make a [Button](https://react-bootstrap.netlify.app/docs/components/buttons)
+
+We can once again wrap the `Button` component with the `WithEndpoint` HOC to create another new Component with all the required Props.
+
+```TSX
+
+...
+import Button from "react-bootstrap/Button";
+
+const EndpointInput = WithEndpoint(Form.Control);
+const EndpointButton = WithEndpoint(Button);
+
+```
+
+Like before, we can use this component within our Template page. This time, we want to provide it with a value that it will send to the Adapter when clicked, instead of it reading the initial value from the adapter like the Textbox example does.
+
+We can also provide it with any of the `props` that the wrapped component would use. These `props` get ignored by the `WithEndpoint` layer, and passed down through to the underlying component; in this case, the `Button`. We can demonstrate this by using the `variant` prop of the button.
+
+```TSX
+
+...
+
+<InputGroup>
+    <InputGroup.Text>String Input</InputGroup.Text>
+    <EndpointInput endpoint={endpoint} fullpath="string_val"/>
+    {/*Use the EndpointButton component, passing it a value and a Variant for styling*/}
+    <EndpointButton endpoint={endpoint} fullpath="trigger" 
+    value="Triggered Value" variant="success">
+        Trigger
+    </EndpointButton>
+</InputGroup>
+
+...
+
+```
+<p align="center">
+<img src="./images/react_workshop_added_button.png"/>
+</p>
+
+> [!NOTE]
+> When assigning a value to a WithEndpoint wrapped component, that value does not have to be hardcoded in the way demonstrated above. It could just as easily be the value written into a textbox, or a State, or calculated from anything else within the GUI.
+
+### Exercise: Make a Toggle Endpoint
+
+Now try to create another Endpoint connected component using the same method as before. Try using the [Bootstrap Switch](https://react-bootstrap.netlify.app/docs/forms/checks-radios#switches) to set the boolean parameter `toggle`.
+
 ## Error Handling
 
 - The Templated project sets up some error handling mechanisms for the application.
@@ -380,6 +515,15 @@ The `EndpointInput` component can also be used for other Parameters in the same 
 <p align="center">
 <img src="./images/react_workshop_input_error.png"/>
 </p>
+
+- It can be worth creating fallback values for things like the Badge that display the value, in case the data isn't available straight away. This can be done with a [Nullish Coalescing Operator](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/Nullish_coalescing)
+
+```TSX
+<TitleCard title="Demo">
+    {/* Get the parameter out of the tree just using Dot Notation */}
+    Random Number: <Badge>{endpoint.data.rand_num ?? "Undefined"}</Badge>
+</TitleCard>
+```
 
 ## Layout
 
@@ -392,7 +536,8 @@ The `EndpointInput` component can also be used for other Parameters in the same 
 
 [Hooks](https://react.dev/reference/react/hooks) are a React feature that allow you to add different features to React Components. React provides a handful of build-in Hooks that are useful to know about.
 
-Hooks can only be used at the **Top Level of a Component**. They cannot be
+> [!WARNING]
+> Hooks can only be used at the **Top Level of a Component**. They cannot be used within functions or any sort of conditional or loop. Hooks can only be called with React is rendering a functional component (I.E: during the main body of the function, before any return statement)
 
 ### [useState](https://react.dev/reference/react/useState)
 
@@ -432,7 +577,7 @@ const [state, setState] = useState(initialState);
 
 ### [useCallback](https://react.dev/reference/react/useCallback)
 
-- Caches a function definition between re-renders, and only re-defines that function if any of it's **Dependencies** change
+- Caches a function definition between re-renders, and only re-defines that function if any of its **Dependencies** change
 
 ``` tsx
 const cachedFunc = useCallback(Func, dependencies);
