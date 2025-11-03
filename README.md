@@ -27,6 +27,21 @@
     }
     ```
 - This markup syntax is called **JSX**, which is what allows for the mixture of html and javascript within a single file and object.
+- Components can be provided with arguments, called *props*, for various purposes. These are passed to the component like *html attributes*, and become an object parameter in the component function that can be [destructured](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/Destructuring).
+
+```javascript
+ function MyButton(props) {
+    const button_text = props;
+
+    return (
+        <button>{button_text}</button>
+    )
+ }
+
+ ...
+
+ <MyButton button_text="Click Here" />
+```
 
 ## What Is Vite?
 
@@ -52,7 +67,9 @@
 - Supports buttons, text input, dropdowns, checkboxes, radio buttons, and more, automatically.
 - Can be provided with functions to run before and/or after the PUT request
 - Can monitor the value within the Endpoint Parameter Tree and display up to date data if changed.
-- Can use metadata to limit input options (e.g: a number input with a Minimum and Maximum value)
+- Utilizes Parameter Metadata to limit input options, such as an integer input having a Minimum and Maximum.
+
+Odin React provided some standard WithEndpoint wrapped components by default, 
 
 ## OdinApp
 - A top level component that provides a navigation bar, routing to multiple pages, and a display for potential errors if something goes wrong.
@@ -62,6 +79,9 @@
 - Odin Control and Odin React are designed to separate *business logic* from the GUI presentation.
 - The GUI should not implement control logic, but should trigger events within the Adapter to do so.
 
+<br></br>
+
+---
 # Workshop
 
 The workshop will involve making sure we have an Odin Control instance running to interact with, and then using [Cookiecutter](https://www.cookiecutter.io/) to instantiate a React Application using one of the available templates.
@@ -88,11 +108,22 @@ odin_control --config web/config/odin.cfg
 
 ## Creating the React Project
 
-In a new terminal, create and move into the `static` directory, and copy one of the templated Odin React projects:
+With a basic Odin Control instance running, we can begin creating the GUI for that project.
+
+> [!NOTE]
+> To begin with, we'll copy a templated version of a basic Odin React GUI and run it in Development mode.
+> 
+> Once the GUI is completed, it can be compiled into static code and served by Odin Control as a static resource. While developing, the GUI will be served standalone on a different address and port than Odin Control, which means it must be configured to accept CORS (Cross Origin Sharing) requests.
+
+In a new terminal, create a directory to contain the React project, and then move into it. Standard practice is one of two options:
+-  either within the `web/static` (*or test/static in older projects*) path of the Odin Control project
+- in its own directory alongside the `control` and/or `data` directory of a larger Odin project
 
 ```bash
-mkdir control/web/static
-cd control/web/static
+# during development, the exact location of the React code does not matter
+# As it will not yet be served statically by Odin Control
+mkdir react
+cd react
 
 # Within a python Virtual Environment (this can be the same one as before), ensure `cookiecutter`is installed. This tool allows us to automatically download and build upon templates:
 
@@ -142,7 +173,7 @@ Terminal Output:
   ➜  press h + enter to show help
 ```
 
-Open this address in your web browser and you should see something like the following:
+Open this address in your web browser of choice (Odin React has been developed to explicitly support either **Firefox** or **Chrome**) and you should see something like the following:
 <p align="center">
 <img src="./images/react_workshop_initial.png"/>
 </p>
@@ -155,7 +186,7 @@ Now that you have a starting point, we can begin to build upon this to add inter
 
 Because we are developing in Typescript, we can tell the [AdapterEndpoint](https://github.com/stfc-aeg/odin-react/wiki/useAdapterEndpoint) what the Parameter Tree will return using an [Interface](https://www.typescriptlang.org/docs/handbook/2/objects.html). This will make accessing the values within easier in future development, as the development environment will already know what is available and what the types are, which can help catch typos and other errors.
 
-Lets first look at what the Parameter Tree looks like in the adapter:
+Lets first look at what the Parameter Tree structure looks like in the adapter:
 
 ```python
 # controller.py
@@ -182,7 +213,7 @@ def __init__(self, options):
         })
 ```
 
-Based on that, we can define an Interface to tell the `AdapterEndpoint` what to expect from the Parameter Tree, by defining the type of each Parameter:
+Based on that, we can define an Interface to tell the `AdapterEndpoint` what to expect from the Parameter Tree, by defining the return type of each Parameter:
 
 ``` TSX
 //app.tsx
@@ -207,16 +238,17 @@ export interface ParamTreeTypes extends ParamTree {
 }
 
 function App() {
-    
+
     const endpoint = useAdapterEndpoint<ParamTreeTypes>("workshop", import.meta.env.VITE_ENDPOINT_URL);
 
     return (
         // ...
 ```
 
-We've provided the `endpoint` with the defined Parameter Tree structure using a [Type Variable](https://www.typescriptlang.org/docs/handbook/2/generics.html). This tells the `endpoint` the Type that its returned `data` will be, which means we can better access those values and know what to expect.
+We've provided the `endpoint` with the defined Parameter Tree structure using a [Type Variable](https://www.typescriptlang.org/docs/handbook/2/generics.html) (the part within the angled brackets). This tells the `endpoint` the Type that its returned `data` will be, which means we can better access those values and know what to expect.
 
-Because Typescript compiles to standard Javascript, this doesn't mean that the endpoint can ONLY have the data structure, but allows us to know what will be available during development.
+>[!TIP]
+> Because Typescript compiles to standard Javascript, providing this Interface does not restrict or limit what the AdapterEndpoint can actually receive from the Adapter. It's used for hinting during development and reduces the need for explicit type checks.
 
 Now that the `endpoint` has been setup, we can modify the `TemplatePage` component to accept the `endpoint` as a [Property](https://react.dev/learn/passing-props-to-a-component), and then add some components that will use the `endpoint`.
 
@@ -235,7 +267,7 @@ import Container from "react-bootstrap/Container";
 import Row from 'react-bootstrap/Row';
 import Col from 'react-bootstrap/Col';
 
-// import the types we need to define the Prop
+// import the types we need to define the Prop, including the Interface we defined.
 import type { AdapterEndpoint_t } from 'odin-react';
 import type { ParamTreeTypes } from "./App";
 
@@ -266,7 +298,7 @@ export const TemplatePage: React.FC<TemplateProps> = (props) => {
 }
 ```
 
-Then, we can pass the endpoint to the component from the parent component:
+Then, we can pass the endpoint to the `TemplatePage` component from the `App` parent component:
 
 ``` TSX
 //App.tsx
@@ -291,6 +323,7 @@ return (
 We can add a label to the GUI that displays the current value of the `rand_num` parameter. This number gets updated periodically, so we can watch it for changes.
 
 ``` TSX
+//TemplatePage.tsx
 
 // Other Imports
 ...
@@ -337,13 +370,13 @@ We can tell it to constantly poll by making it `Periodic`. We do that by providi
 ...
 
 function App() {
-    // an Interval of 1000 means it will do a GET request every second and refresh itself.
+    // an Interval of 1000 means it will do a GET request every second to refresh its data
     const endpoint = useAdapterEndpoint<ParamTreeTypes>
     ("workshop", import.meta.env.VITE_ENDPOINT_URL, 1000);
 
     ...
 ```
-Make this change, and then return to the Browser to see that the number now updates. You can also see that it is working by checking the output from `Odin Control` and see the repeated GET requests:
+Make this change, and then return to the Browser to see that the number now updates. You can also see that it is working by checking the terminal output from `Odin Control` and see the repeated GET requests:
 ```bash
 [D 250729 14:41:19 controller:84] GET request received at path: 
 [D 250729 14:41:19 server:138] 200 GET /api/0.1/workshop (127.0.0.1) 1.33ms
@@ -358,6 +391,8 @@ Make this change, and then return to the Browser to see that the number now upda
 ### Creating A Component that uses the Endpoint
 
 We now need to create a component that can not only read from the `endpoint`, but write to the Parameters. We can do this with the [WithEndpoint](https://github.com/stfc-aeg/odin-react/wiki/WithEndpoint) Higher Order Component, which will return a component that has the required props and event handlers to make use of the `Endpoint`.
+
+Odin React provides some standard Endpoint Components already wrapped by WithEndpoint, but for the purposes of this Workshop we will do this manually.
 
 Lets start with a [textbox](https://react-bootstrap.netlify.app/docs/forms/form-control):
 ``` TSX
@@ -381,6 +416,7 @@ import type { AdapterEndpoint_t } from 'odin-react';
 
 //declare a new component based on the Form.Control, using WithEndpoint
 //notice that we do not provide it with the endpoint or anything at this stage. We've basically just made a new component we can then use.
+//also notice that this component must be created outside our actual Page component to avoid it being recreated every time that Page rerenders, and losing state.
 const EndpointInput = WithEndpoint(Form.Control);
 
 ...
@@ -513,7 +549,7 @@ Now try to create another Endpoint connected component using the same method as 
 - Test this by shutting down the Odin Control instance and attempting to enter a new value for a parameter:
 
 <p align="center">
-<img src="./images/react_workshop_input_error.png"/>
+<img src="./images/react_workshop_input_error_updated.png"/>
 </p>
 
 - It can be worth creating fallback values for things like the Badge that display the value, in case the data isn't available straight away. This can be done with a [Nullish Coalescing Operator](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/Nullish_coalescing)
@@ -531,6 +567,28 @@ Now try to create another Endpoint connected component using the same method as 
 - Organise page contents using the `Row` and `Col` components
     - Bootstrap provides means to set the width of the columns as shown [Here](https://react-bootstrap.netlify.app/docs/layout/grid#setting-one-column-width). The grid classes shown split the width of the container into **12**, so setting a grid class to **6** would set it to take up half the space available.
 - Group related controls and components within a [Title Card](https://github.com/stfc-aeg/odin-react/wiki/TitleCard)
+
+## Custom CSS Styling
+
+- Most styling is provided by Odin React or by Bootstrap.
+    - Bootstrap uses a global CSS file imported at the top component of the standard Odin React templated project, seen at the top of the `app.tsx` file.
+    - The order of imports matters in React JSX/TSX, so **a second CSS file imported after the first one will overwrite any matching CSS Class rules**
+
+If custom styling is required, it's recommended that you use a [CSS module](https://github.com/css-modules/css-modules), rather than importing a plain css file. CSS Modules scope class names locally, avoiding clashes
+
+```TSX
+//example.tsx
+
+...
+
+import styles from './example.module.css';
+
+...
+
+<div className={style.customDiv}>
+    ...
+</div>
+```
 
 ## React Hooks
 
@@ -615,3 +673,35 @@ useEffect(() => {
 > Because of the way React compares Objects, putting an object into a Hook's *Dependency Array* will cause that hook to re-run at every render.
 >
 > The [React Docs](https://react.dev/learn/removing-effect-dependencies#does-some-reactive-value-change-unintentionally) have more details about why this happens, and how to negate the issue.
+
+## Compiling a Finished GUI
+
+Once the development of the GUI is completed, it needs to be built as a Static Resource, which can then be served by your Odin Control project. This is a fairly simple process:
+
+- run `npm run build` in the GUI's top directory. This will produce a `dist` folder containing the static version of your GUI application.
+- copy the resulting `dist` folder into the `web/static` or `test/static` directory of your Odin Control project.
+- ensure the Odin Control config sets the static path to this `dist` folder in one of two ways
+    - `static_path = web/static/dist` in the config file
+    - `--static = web/static/dist` on the command line when running Odin Control
+
+Standard practice when developing Odin React is to utilize `.env` files to specify the address of any Odin Control instances it needs to connect to (as seen in the example AdapterEndpoint provided). During development, this file is the `.env.development.local` produced by the template. During compilation, it will look for a `.env.production` or `.end.production.local` file to get the address required and hard code that into the static resource produced.
+
+Because the standard practice is to have the static GUI served by Odin Control, this additional production file is not usually needed, as left blank it will connect to its own server. However, if a static GUI needs to connect to other Odin Control instances than the one serving it, this `env` file should be created before compilation.
+
+These files can also be used to define other environment variables for other purposes, if required. Vite can import and use any variable defined in these files that have the `VITE_` prefix.
+
+
+<br></br>
+
+---
+# FAQ and Common Issues
+
+
+### The Adapter is running, and the endpoint adapter is definitely pointing at the correct address/port, but I'm still getting network errors.
+
+- It's likely that you have not enabled CORS on your Odin Control instance, which means that the server is refusing the responses from another server. Check your Odin Control config file and ensure `enable_cors = true` is present in the server config.
+
+### Everything looks bad and/or weird.
+
+- Check the CSS imports. You may have removed or changed the import of the bootstrap CSS file from the template, or forgotten it if you are not using the template.
+- Are you importing a custom CSS file in a component? It may be that the CSS imported is overwriting the Bootstrap CSS that provides a lot of the standard styling for Odin React. [Check the Section about CSS Styling](#custom-css-styling)
