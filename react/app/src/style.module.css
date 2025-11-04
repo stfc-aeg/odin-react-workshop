@@ -1,0 +1,12 @@
+/* A CSS Module file, to set custom CSS on components if required */
+
+.exampleCol {
+  border-right: 1px solid var(--bs-card-border-color);
+  place-content: center;
+  text-align: center;
+}
+
+.codeBlock {
+  background-color: var(--bs-card-cap-bg);
+  padding: .5rem;
+}
