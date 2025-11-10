@@ -3,17 +3,24 @@
 import { TitleCard, EndpointButton, EndpointInput, type AdapterEndpoint_t } from "odin-react";
 
 /**
+ * Using a library to render the source code for out example components
+ */
+import reactElementToJSXString from "react-element-to-jsx-string";
+
+/**
  * These imports below bring components from Bootstrap React into the page, that are designed
  * to help create a good layout for the application.
  * The whole page is contained within a Container Component as all React Components
  * must have a single Root Parent Element (meaning the return statement should return
  * a single element that then contains the rest of the page as its children)
 */
-import { Container, Row, Col, Badge, InputGroup } from "react-bootstrap";
+import { Container, Row, Col, Badge, InputGroup, Button } from "react-bootstrap";
 
 import styles from "./style.module.css";
 
 import type { WorkshopParams } from "./WorkshopParams";
+import { useState } from "react";
+import { ExampleDisplayParam } from "./ExampleComponents";
 
 /**
  * This typescript interface defines what Properties the Example Page accepts.
@@ -35,6 +42,11 @@ export const ExamplePage: React.FC<ExamplePageProps> = (props) => {
 
   const {endpoint, title} = props;
 
+  /**
+   * An Example State in the ExamplePage Component, to demo how to use the useState hook
+   */
+  const [exampleState, setExampleState] = useState<number>(0);
+
   return (
     <Container>
       {/* You can Conditionally include parts of the JSX if certain variables/props are true, or defined, like this Conditional Title Row 
@@ -49,11 +61,11 @@ export const ExamplePage: React.FC<ExamplePageProps> = (props) => {
         <TitleCard title="Displaying an Adapter Parameter">
           <Row>
             <Col className={styles.exampleCol} md="4">
-              Random Number: <Badge>{endpoint.data.rand_num ?? "undefined"}</Badge>  
+              <ExampleDisplayParam endpoint={endpoint} />
             </Col>
             <Col>
               <pre className={styles.codeBlock}>
-                {`Random Number: <Badge>{endpoint.data.rand_num ?? "undefined"}</Badge>`}
+                {reactElementToJSXString(ExampleDisplayParam({endpoint}), {showFunctions: true})}
               </pre>
               <ul>
                 <li>
@@ -100,12 +112,11 @@ export const ExamplePage: React.FC<ExamplePageProps> = (props) => {
           </Col>
           <Col>
             <pre className={styles.codeBlock}>
-            {
-`<InputGroup>
-  <InputGroup.Text>Input String</InputGroup.Text>
-  <EndpointInput endpoint={endpoint} fullpath="string_val"/>
-</InputGroup>
-<InputGroup>
+            {`<InputGroup>
+              <InputGroup.Text>Input String</InputGroup.Text>
+              <EndpointInput endpoint={endpoint} fullpath="string_val"/>
+              </InputGroup>
+              <InputGroup>
   <InputGroup.Text>Input Number</InputGroup.Text>
   <EndpointInput endpoint={endpoint} fullpath="num_val" type="number"/>
 </InputGroup>`
@@ -150,6 +161,25 @@ export const ExamplePage: React.FC<ExamplePageProps> = (props) => {
                 Try and use the arrow buttons on the input to reduce the value below <b>15</b>, or manually type a lower value and hit enter, to see what happens.
               </li>
             </ul>
+          </Col>
+          </Row>
+        </TitleCard>
+      </Col>
+    </Row>
+    <Row>
+      <Col>
+        <TitleCard title="Using State">
+          <Row>
+          <Col className={styles.exampleCol} md="4">
+            {/* STATE IS OUTSIDE THE RETURN PART OF THE COMPONENT ABOVE */}
+            <InputGroup>
+            <Button onClick={() => setExampleState(x => x + 1)}>Increment State: {exampleState}</Button>
+            </InputGroup>
+          </Col>
+          <Col>
+            <pre className={styles.codeBlock}>
+              
+            </pre>
           </Col>
           </Row>
         </TitleCard>
