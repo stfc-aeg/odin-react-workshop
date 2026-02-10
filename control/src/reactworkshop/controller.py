@@ -48,8 +48,15 @@ class WorkshopController(BaseController):
             "select_list": (lambda: self.selection_list, None),
             "selected": (lambda: self.selected, self.set_selection),
             "toggle": (lambda: self.toggle, self.set_toggle),
-            "trigger": (None, self.trigger_event)
+            "trigger": (None, self.trigger_event),
+            "broken": (None, self.throw_error)
         })
+
+    def throw_error(self, _):
+        try:
+            raise WorkshopError("Intentionally Throwing an Error")
+        except WorkshopError as e:
+            logging.error("Intentional Error Caught: %s", e)
 
     def looping_update(self):
         self.random_num = random.randint(0, 100)
@@ -89,7 +96,7 @@ class WorkshopController(BaseController):
 
     def set(self, path, data):
         try:
-            logging.debug("PUT request received at path: %s with data %s", path, data)
+            logging.info("PUT request received at path: %s with data %s", path, data)
             self.param_tree.set(path, data)
         except ParameterTreeError as error:
             logging.error(error)

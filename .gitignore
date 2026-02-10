@@ -1,1 +1,3 @@
 control/web/static
+.vscode
+package-lock.json
