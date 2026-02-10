@@ -20,8 +20,8 @@ export interface WorkshopParams extends ParamTree{
   }
   /**A Random number that gets changed by the adapter every 100 milliseconds */
   rand_num: number;
-  selected_list: string[];
   selected: string;
   toggle: boolean;
   trigger: null;
+  broken: null;
 }

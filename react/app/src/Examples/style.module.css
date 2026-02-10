@@ -15,3 +15,17 @@
     border-radius: var(--bs-border-radius);
   }
 }
+
+.markdown {
+
+  :global(blockquote) {
+    display: inline-block;
+    margin-left: 1rem;
+    border-radius: var(--bs-border-radius);
+    background-color: var(--bs-dark-bg-subtle);
+    padding: .5rem 1rem;
+    :global(p) {
+      margin-bottom: 0;
+    }
+  }
+}

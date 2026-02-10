@@ -15,7 +15,7 @@ const App: React.FC = () => {
       {/* Add pages as children of the OdinApp component. Add a nav link to each page in the navLinks
           prop of OdinApp*/}
       <WorkshopPage/>
-      <ExamplePage endpoint={endpoint}/>
+      <ExamplePage/>
       <PlaygroundPage endpoint={endpoint}/>
     </OdinApp>
   )

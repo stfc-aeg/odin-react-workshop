@@ -45,8 +45,10 @@ class WorkshopController(BaseController):
                 "half": (lambda: self.num_val / 2, None)
             },
             "rand_num": (lambda: self.random_num, None),
-            "select_list": (lambda: self.selection_list, None),
-            "selected": (lambda: self.selected, self.set_selection),
+            "selected": (lambda: self.selected, self.set_selection,
+                         { # metadata
+                             "allowed_values": self.selection_list
+                         }),
             "toggle": (lambda: self.toggle, self.set_toggle),
             "trigger": (None, self.trigger_event),
             "broken": (None, self.throw_error)
