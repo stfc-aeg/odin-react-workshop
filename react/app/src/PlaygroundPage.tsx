@@ -3,13 +3,13 @@ import type React from "react";
 import { LiveProvider, LivePreview, LiveEditor, LiveError } from "react-live";
 
 import {Container, Row, Col, Badge, Button, InputGroup} from 'react-bootstrap';
-import { EndpointInput, TitleCard, useAdapterEndpoint, type AdapterEndpoint_t } from "odin-react";
+import { EndpointInput, TitleCard, useAdapterEndpoint, type AdapterEndpoint } from "odin-react";
 import type { WorkshopParams } from "./WorkshopParams";
 
 
 const stateScope = {useAdapterEndpoint, EndpointInput, InputGroup};
 
-export const PlaygroundPage: React.FC<{endpoint: AdapterEndpoint_t<WorkshopParams>}> = ({endpoint}) => {
+export const PlaygroundPage: React.FC<{endpoint: AdapterEndpoint<WorkshopParams>}> = ({endpoint}) => {
   
   const code = `<Badge>Random Number: {endpoint.data.rand_num ?? "undefined"}</Badge>`;
   const scope = {Badge, endpoint};

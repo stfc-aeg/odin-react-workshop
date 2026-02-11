@@ -23,5 +23,6 @@ export interface WorkshopParams extends ParamTree{
   selected: string;
   toggle: boolean;
   trigger: null;
+  /**A parameter that intentionally raises an exception when SET*/
   broken: null;
 }

@@ -1,14 +1,16 @@
 import { useAdapterEndpoint, EndpointInput, EndpointButton, TitleCard } from 'odin-react';
+import { useState } from 'react';
 
-
-import {Container, Stack, Badge, InputGroup, Form, Button}  from 'react-bootstrap';
+import {Container, Stack, Badge, InputGroup, Form}  from 'react-bootstrap';
 
 import { ExampleComponent } from './Examples/ExampleComponent';
 
-import { code as EndpointReadCode, desc as EndpointReadDesc } from './Examples/EndpointRead';
+import { EndpointReadCode, EndpointReadDesc } from './Examples/EndpointRead';
 import { WithEndpointCode, WithEndpointDesc } from './Examples/WithEndpoint';
 import { UseStateCode, UseStateDesc } from './Examples/UseState';
-import { useState } from 'react';
+import { ErrorHandlingCode, ErrorHandlingDesc } from './Examples/ErrorHandling';
+
+
 
 import styles from "./Examples/style.module.css";
 
@@ -50,7 +52,8 @@ export const ExamplePage: React.FC = () => {
                 <ExampleComponent title="Using State with Odin React"
                                   markdown={UseStateDesc} code={UseStateCode}
                                   scope={scope}/>
-                                  
+                <ExampleComponent title="Handling Errors" markdown={ErrorHandlingDesc}
+                                  code={ErrorHandlingCode} scope={scope}/>
             </Stack>
         </Container>
     )

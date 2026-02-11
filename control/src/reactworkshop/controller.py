@@ -55,10 +55,8 @@ class WorkshopController(BaseController):
         })
 
     def throw_error(self, _):
-        try:
-            raise WorkshopError("Intentionally Throwing an Error")
-        except WorkshopError as e:
-            logging.error("Intentional Error Caught: %s", e)
+        raise ParameterTreeError("Intentionally Throwing an Error")
+            
 
     def looping_update(self):
         self.random_num = random.randint(0, 100)
