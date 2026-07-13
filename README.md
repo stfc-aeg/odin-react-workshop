@@ -439,6 +439,8 @@ The `EndpointInput` component can also be used for other Parameters in the same 
 > `Endpoint components` will utilize the metadata provided by the Parameter Tree. If a Parameter is not defined as *Writeable*, the component will be disabled so that the user can visually see it is not an editable field.
 >
 > With numerical Parameters it will also use any *min* or *max* values defined in the metadata.
+>
+> An [EndpointDropdown](https://stfc-aeg.github.io/odin-react/?path=/docs/components-withendpoint-endpointdropdown--docs) will also use the `allowed_values` metadata value to automatically create dropdown options, if available.
 
 
 ### Adding a Button
@@ -447,6 +449,7 @@ Lets now add an [EndpointButton](https://stfc-aeg.github.io/odin-react/?path=/do
 
 We can also provide it with any of the `props` that the normal component would use. These `props` get passed to the underlying component; in this case, the bootstrap `Button`. We can demonstrate this by using the `variant` prop of the button.
 
+**Editing `src/Page.tsx`**
 ```diff
 - import { EndpointInput, TitleCard } from "@dssg/odin-react";
 + import { EndpointButton, EndpointInput, TitleCard } from "@dssg/odin-react";
@@ -513,23 +516,124 @@ For instance, try using the `EndpointInput` again, but this time for the `num_va
 
 You could also try using the [EndpointDropdown](https://stfc-aeg.github.io/odin-react/?path=/docs/components-withendpoint-endpointdropdown--docs) component to control a Parameter with limited potential values. The `selected` Parameter on the Demo Adapter uses metadata to specify *Allowed Values*, which the dropdown component will use to generate a dropdown menu automatically.
 
-## Error Handling
 
-- The Templated project sets up some error handling mechanisms for the application.
-    - This will automatically display on screen any errors that may occur due to the Odin Control Adapter being inaccessible, or other issues with the HTTP requests.
-- Test this by shutting down the Odin Control instance and attempting to enter a new value for a parameter:
+## Organising the GUI
+
+### Using Bootstrap's Grid Layout.
+Odin React is designed to make use of the [Bootstrap Grid Layout](https://react-bootstrap.netlify.app/docs/layout/grid) to organise the page.
+Organise page contents using the `Row` and `Col` components. Bootstrap provides means to set the width of the columns as shown [Here](https://react-bootstrap.netlify.app/docs/layout/grid#setting-one-column-width). The grid classes shown split the width of the container into **12**, so setting a grid class to **6** would set it to take up half the space available.
+
+Related controls and components should be grouped within a [Title Card](https://stfc-aeg.github.io/odin-react/?path=/docs/components-titlecard--docs) so that they appear visually connected. `Rows` and `Cols` can be used within title cards to control the internal layout in the same way as the entire Page. `TitleCards` can even contain other nested `TitleCards` for as much control as needed.
+
+### Adding Pages
+In some cases, you may even need to add more pages to the GUI to keep things organised. This can be done reasonably easily with the `OdinApp` component that creates the `Navbar` at the top of the screen.
+
+Start by creating a new file for the new page:
+```bash
+touch web/static/src/NewPage.tsx
+```
+And then, in your preferred editor, create a component within that new file for your new page:
+
+**Editing `web/static/src/NewPage.tsx`**
+```typescript
+import { TitleCard } from "@dssg/odin-react";
+import { Container } from "react-bootstrap";
+
+
+const NewPage = () => {
+
+    return (
+        // Components need to return as a single object, so wrap the page in
+        // a container
+        <Container>
+            {/* Adding a titlecard just so there's something to see */}
+            <TitleCard title="Hello">
+            </TitleCard>
+        </Container>
+    )
+}
+
+// Export the component so we can import it from other files
+export default NewPage;
+
+```
+
+Then, in the `App.tsx` file of the GUI project, add this page as a child of the `OdinApp` component. We also need to provide a list of navLinks, so that the Navbar can show links for each. Otherwise, it will display all the pages at once.
+
+**Editing `web/static/src/App.tsx`**
+```diff
+import 'bootstrap/dist/css/bootstrap.min.css';
+
+import { OdinApp, useAdapterEndpoint, type ParamNode } from "@dssg/odin-react";
+import Page from "./Page";
++ import { NewPage } from './NewPage';
+
+/**An Interface to define the shape of the Parameter Tree from the Odin Control Adapter.
+* Define Parameter Names and Types here to allow your IDE to know what they are
+* if and when accessing the data within your App
+* */
+export interface EndpointParams extends ParamNode {
+  /* Add any Parameters you'll be using to this interface, such as this example*/
+  example: string;
+}
+
+const App = () => {
+
+  // Connect to the Odin Control Adapter you specified.
+  // More endpoints for other adapters can be created.
+  const endpoint = useAdapterEndpoint<EndpointParams>("reactworkshop", import.meta.env.VITE_ENDPOINT_URL, 1000);
+
+  return (
+-   <OdinApp title="React Workshop">
++   <OdinApp title="React Workshop" navLinks={["Home", "New Page"]}>
+      <Page endpoint={endpoint}/>
++      <NewPage />
+    </OdinApp>
+  )
+}
+
+export default App
+
+```
 
 <p align="center">
-<img src="./images/react_workshop_input_error_updated.png"/>
+<img src="./images/react_workshop_added_page.png"/>
 </p>
 
-- It can be worth creating fallback values for things like the Badge that display the value, in case the data isn't available straight away. This can be done with a [Nullish Coalescing Operator](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/Nullish_coalescing)
+This page can then have components added to it in exactly the same way as the previous page. You can also set the page to use `Props` in the same way the original `Page.tsx` component did so it can use the same `AdapterEndpoint` if need be.
 
-```TSX
-<TitleCard title="Demo">
-    {/* Get the parameter out of the tree just using Dot Notation */}
-    Random Number: <Badge>{endpoint.data.rand_num ?? "Undefined"}</Badge>
-</TitleCard>
+Component Props should usually be defined in an [Interface](https://www.typescriptlang.org/docs/handbook/2/objects.html) so the editor knows what properties to expect, and what their types will be.
+
+**Editing `web/static/src/NewPage.tsx`**
+```diff
+- import { TitleCard } from "@dssg/odin-react";
++ import { TitleCard, type AdapterEndpoint } from "@dssg/odin-react";
+import { Container } from "react-bootstrap";
++ import type {EndpointParams} from "./App";
+
++ interface NewPageProps {
++     endpoint: AdapterEndpoint<EndpointParams>;
++ }
+
+- const NewPage = () => {
++ const NewPage = (
++    { endpoint }: NewPageProps
++ ) => {
+
+    return (
+        // Components need to return as a single object, so wrap the page in
+        // a container
+        <Container>
+            {/* Adding a titlecard just so there's something to see */}
+            <TitleCard title="Hello">
+            </TitleCard>
+        </Container>
+    )
+}
+
+// Export the component so we can import it from other files
+export default NewPage;
+
 ```
 
 ## Layout
