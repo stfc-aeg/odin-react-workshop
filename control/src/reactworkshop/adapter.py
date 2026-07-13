@@ -1,9 +1,9 @@
-from .base.base_adapter import BaseAdapter
-from .controller import WorkshopController, WorkshopError
+from odin_control.adapters.adapter import ApiAdapter
+from .controller import ReactWorkshopController, ReactWorkshopError
 
 
-class WorkshopAdapter(BaseAdapter):
-    """WORKSHOP Adapter class inheriting base adapter functionality."""
+class ReactWorkshopAdapter(ApiAdapter):
+    """ReactWorkshop Adapter class inheriting base adapter functionality."""
 
-    controller_cls = WorkshopController
-    error_cls = WorkshopError
+    controller_cls = ReactWorkshopController
+    error_cls = ReactWorkshopError

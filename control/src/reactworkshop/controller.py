@@ -1,17 +1,16 @@
 import logging
 import random
-from odin.adapters.parameter_tree import ParameterTree, ParameterTreeError
+from odin_control.adapters.parameter_tree import ParameterTree, ParameterTreeError
+from odin_control.adapters.base_controller import BaseController, BaseError
 from tornado.ioloop import PeriodicCallback
 
-from .base.base_controller import BaseController, BaseError
 
-
-class WorkshopError(BaseError):
+class ReactWorkshopError(BaseError):
     """Simple exception class to wrap lower-level exceptions."""
 
 
-class WorkshopController(BaseController):
-    """Controller class for WORKSHOP."""
+class ReactWorkshopController(BaseController):
+    """Controller class for ReactWorkshop."""
 
     def __init__(self, options):
         self.options = options
@@ -20,18 +19,13 @@ class WorkshopController(BaseController):
         self.num_val = 20
         self.random_num = random.randint(0, 100)
 
-        self.selection_list = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+        self.selection_list = ["Monday", "Tuesday", "Wednesday",
+                               "Thursday", "Friday", "Saturday", "Sunday"]
         self.selected = "Monday"
         self.toggle = True
 
         self.loop = PeriodicCallback(self.looping_update, 500)
         self.loop.start()
-
-        self.first_name = ""
-        self.last_name = ""
-        self.age = 0
-
-        self.slow_put = 5
 
         self.param_tree = ParameterTree({
             "string_val": (lambda: self.string_val, self.set_string),
@@ -46,7 +40,7 @@ class WorkshopController(BaseController):
             },
             "rand_num": (lambda: self.random_num, None),
             "selected": (lambda: self.selected, self.set_selection,
-                         { # metadata
+                         {  # metadata
                              "allowed_values": self.selection_list
                          }),
             "toggle": (lambda: self.toggle, self.set_toggle),
@@ -56,7 +50,6 @@ class WorkshopController(BaseController):
 
     def throw_error(self, _):
         raise ParameterTreeError("Intentionally Throwing an Error")
-            
 
     def looping_update(self):
         self.random_num = random.randint(0, 100)
@@ -67,12 +60,12 @@ class WorkshopController(BaseController):
         # Add to param tree if needed post-initialization
 
     def cleanup(self):
-        logging.info("Cleaning up WorkshopController")
+        logging.info("Cleaning up ReactWorkshopController")
 
     def set_selection(self, val):
         if val in self.selection_list:
             self.selected = val
-    
+
     def set_string(self, val):
         self.string_val = val
 
@@ -92,7 +85,7 @@ class WorkshopController(BaseController):
             return self.param_tree.get(path, with_metadata)
         except ParameterTreeError as error:
             logging.error(error)
-            raise WorkshopError(error)
+            raise ReactWorkshopError(error)
 
     def set(self, path, data):
         try:
@@ -100,4 +93,4 @@ class WorkshopController(BaseController):
             self.param_tree.set(path, data)
         except ParameterTreeError as error:
             logging.error(error)
-            raise WorkshopError(error)
+            raise ReactWorkshopError(error)
