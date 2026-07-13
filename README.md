@@ -195,7 +195,8 @@ Open this address in your web browser of choice (Odin React has been developed t
 
 Feel free to use the generated controls to get a feel for how the various GUI components interact with your Odin Control adapter.
 
->[!IMPORTANT] This inital state of the React GUI grabs the full Parameter Tree from your Odin Control server and displays some auto-generated controls based on the response.
+>[!WARNING]
+> This initial state of the React GUI grabs the full Parameter Tree from your Odin Control server and displays some auto-generated controls based on the response.
 >
 > If for some reason you do not see these controls, and/or see warnings about the connection, check that your Odin Control server is running and that the address used when copying the React Template matches the one Odin Control is listening on.
 
@@ -251,181 +252,66 @@ const Page = ({
 export default Page;
 ```
 
-With that removed, we can add our own specific controls.
+With that removed, we can design the GUI ourselves.
 
+### Reading the Endpoint Data
 
-### Modify the AdapterEndpoint
+The endpoint provides a `data` object we can reference to display our parameters.
+If all we want is to show some value from a parameter without editing it, reading from this object is all we need to do. It handles all the `GET` requests and data parsing for us.
 
-Because we are developing in Typescript, we can tell the [AdapterEndpoint](https://github.com/stfc-aeg/odin-react/wiki/useAdapterEndpoint) what the Parameter Tree will return using an [Interface](https://www.typescriptlang.org/docs/handbook/2/objects.html). This will make accessing the values within easier in future development, as the development environment will already know what is available and what the types are, which can help catch typos and other errors.
+We can add a label to the GUI that displays the current value of the `rand_num` parameter. This number gets updated periodically, so we can watch it for changes. 
 
-Lets first look at what the Parameter Tree structure looks like in the adapter:
+**Editing `src/Page.tsx`**:
 
-```python
-# controller.py
-def __init__(self, options):
-    
-    # ...
+```diff
+import { TitleCard } from "@dssg/odin-react";
+import type { AdapterEndpoint } from "@dssg/odin-react";
+- import { Container, Row, Col } from 'react-bootstrap';
++ import { Container, Row, Col, Badge } from 'react-bootstrap';
+import { type EndpointParams } from "./App";
 
-    self.param_tree = ParameterTree({
-            "string_val": (lambda: self.string_val, self.set_string),
-            "num_val": (lambda: self.num_val, self.set_num_val,
-                        {  # metadata
-                            "min": 15,
-                            "max": 76
-                        }),
-            "num_details": {
-                "is_even": (lambda: not (self.num_val % 2), None),
-                "half": (lambda: self.num_val / 2, None)
-            },
-            "rand_num": (lambda: self.random_num, None),
-            "select_list": (lambda: self.selection_list, None),
-            "selected": (lambda: self.selected, self.set_selection),
-            "toggle": (lambda: self.toggle, self.set_toggle),
-            "trigger": (None, self.trigger_event)
-        })
-```
-
-Based on that, we can define an Interface to tell the `AdapterEndpoint` what to expect from the Parameter Tree, by defining the return type of each Parameter:
-
-``` TSX
-//app.tsx
-import { OdinApp, useAdapterEndpoint } from 'odin-react';
-import { TemplatePage } from './TemplatePage';
-
-import type { ParamTree } from 'odin-react';
-
-//the EXPORT keyword means we can import this interface in other files, like TemplatePage.tsx
-export interface ParamTreeTypes extends ParamTree {
-    string_val: string;
-    num_val: number;
-    num_details: {
-        is_even: boolean;
-        half: number;
-    }
-    rand_num: number;
-    selected_list: string[];
-    selected: string;
-    toggle: boolean;
-    trigger: null;
+interface PageProps {
+    endpoint: AdapterEndpoint<EndpointParams>
 }
 
-function App() {
-
-    const endpoint = useAdapterEndpoint<ParamTreeTypes>("workshop", import.meta.env.VITE_ENDPOINT_URL);
+const Page = ({
+    endpoint
+}: PageProps) => {
 
     return (
-        // ...
+        <Container>
+            <Row>
+                <Col>
+                    <TitleCard title="Demo">
+-                       A Basic page using Bootstrap's Row/Col grid layout.
+-                       Use this as a starting point for your GUI.
+-                       <br />
+-                       Below is an auto-generated set of controls for your
+-                       adapter to test and confirm the connection is working.
+-                       This should not be used in the final GUI and is for debug
+-                       purposes only
++                       Random Number: <Badge>{endpoint.data?.rand_num ?? "Unknown"}</Badge>
+                    </TitleCard>
+                </Col>
+            </Row>
+            <Row>
+                <Col>
+                    <TitleCard title="">
+                </Col>
+            </Row>
+        </Container>
+    )
+}
+
+export default Page;
 ```
-
-We've provided the `endpoint` with the defined Parameter Tree structure using a [Type Variable](https://www.typescriptlang.org/docs/handbook/2/generics.html) (the part within the angled brackets). This tells the `endpoint` the Type that its returned `data` will be, which means we can better access those values and know what to expect.
-
 >[!TIP]
-> Because Typescript compiles to standard Javascript, providing this Interface does not restrict or limit what the AdapterEndpoint can actually receive from the Adapter. It's used for hinting during development and reduces the need for explicit type checks.
+> When using this data object, its a good idea to always use the [Optional Chaining](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/Optional_chaining) `?.` operator to access parts of the `data` object. This is because it initialises as `null`.
+> It can also be useful to provide a default value if it is null using the [Nullish Coalescing Operator](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/Nullish_coalescing) `??`. This means that if the left side of the operator is `null` or `undefined`, use whatever value is on the right side instead.
 
-Now that the `endpoint` has been setup, we can modify the `TemplatePage` component to accept the `endpoint` as a [Property](https://react.dev/learn/passing-props-to-a-component), and then add some components that will use the `endpoint`.
-
-### Passing the Endpoint as a Prop.
-
-First, we need to tell the `TemplatePage` component to accept an Endpoint as a Prop, so that any Child component of the page can also receive the endpoint, if required.
-
-> [!NOTE]
-> In React, Props always flow from Parent to Child, not vice versa. This is why the default `endpoint` in the template gets created in the higher level `App` component and passed down; so that it can be used by multiple pages if required. This default can be moved within a specific page if only that page will require it.
-
-``` TSX
-// TemplatePage.tsx
-import { TitleCard } from "odin-react"
-
-import Container from "react-bootstrap/Container";
-import Row from 'react-bootstrap/Row';
-import Col from 'react-bootstrap/Col';
-
-// import the types we need to define the Prop, including the Interface we defined.
-import type { AdapterEndpoint_t } from 'odin-react';
-import type { ParamTreeTypes } from "./App";
-
-// its common practice to define the props for a component in an interface
-interface TemplateProps {
-    //define a prop called "endpoint" that is an Endpoint,
-    // which returns data that matches the shape of ParamTreeTypes
-    endpoint: AdapterEndpoint_t<ParamTreeTypes>;
-}
-
-//pass the interface as a Type Variable to the return type of TemplatePage (React.FC)
-export const TemplatePage: React.FC<TemplateProps> = (props) => {
-
-    //deconstruct the props to get the values from them. In this case, just the endpoint
-    const {endpoint} = props;
-    
-    return (
-        <Container>
-        <Row>
-        <Col>
-            <TitleCard title="Demo">
-                Feel free to delete this Titlecard if required.
-            </TitleCard>
-        </Col>
-        </Row>
-        </Container>
-    )
-}
-```
-
-Then, we can pass the endpoint to the `TemplatePage` component from the `App` parent component:
-
-``` TSX
-//App.tsx
-
-...
-
-const endpoint = useAdapterEndpoint("workshop", import.meta.env.VITE_ENDPOINT_URL);
-
-return (
-    <OdinApp title='React Workshop' navLinks={["Page One"]}>
-      <TemplatePage endpoint={endpoint}/>
-    </OdinApp>
-  )
-
-```
-
-### Using the Endpoint Data
-
-- The endpoint provides a `data` object we can reference to display our parameters.
-- Since we previously used the `interface` to tell the endpoint whats available on the Parameter Tree, accessing those defined parameters is simple
-
-We can add a label to the GUI that displays the current value of the `rand_num` parameter. This number gets updated periodically, so we can watch it for changes.
-
-``` TSX
-//TemplatePage.tsx
-
-// Other Imports
-...
-
-import Badge from "react-bootstrap/Badge";
-
-// its common practice to define the props for a component in an interface
-interface TemplateProps {
-    endpoint: AdapterEndpoint_t<ParamTreeTypes>;
-}
-
-export const TemplatePage: React.FC<TemplateProps> = (props) => {
-
-    const {endpoint} = props;
-
-    return (
-        <Container>
-        <Row>
-        <Col>
-            <TitleCard title="Demo">
-                {/* Get the parameter out of the tree just using Dot Notation */}
-                Random Number: <Badge>{endpoint.data.rand_num}</Badge>
-            </TitleCard>
-        </Col>
-        </Row>
-        </Container>
-    )
-}
-
-```
+>[!NOTE]
+> Depending on your editor and how it is set up, you may get warnings when using this parameter about `Type 'ParamNode' is not assignable to type 'ReactNode'.` or similar.
+> This is because of the way the template sets up the default `AdapterEndpoint` component. We can fix this issue later, but it is safe to ignore for now.
 
 If we return to the browser, the changes made to the page should have been reloaded and the Input but now visible:
 
@@ -434,31 +320,45 @@ If we return to the browser, the changes made to the page should have been reloa
 </p>
 
 However, this displayed number is not changing, even though the one in the adapter is. It only changes when we reload the page.
-This is because our AdapterEndpoint only `GETS` from the API when it's told to, which in this example is only when it first loads.
-We can tell it to constantly poll by making it `Periodic`. We do that by providing it with a value in milliseconds for how often to perform this `GET` request and update the data in the GUI
+This is because our `AdapterEndpoint` only fetches the Parameter Tree when it's told to and then caches it. In this example, that's only when it first loads.
+We can tell it to constantly poll when we create it by providing it with a value in milliseconds for how often to fetch the tree and update it's cached `data` object.
 
-``` TSX
-//app.tsx
-...
+Lets get it to poll the adapter every second.
 
-function App() {
-    // an Interval of 1000 means it will do a GET request every second to refresh its data
-    const endpoint = useAdapterEndpoint<ParamTreeTypes>
-    ("workshop", import.meta.env.VITE_ENDPOINT_URL, 1000);
+**Editing `src/App.tsx`**
 
-    ...
+```diff
+import 'bootstrap/dist/css/bootstrap.min.css';
+
+import { OdinApp, useAdapterEndpoint, type ParamNode } from "@dssg/odin-react";
+import Page from "./Page";
+
+/**An Interface to define the shape of the Parameter Tree from the Odin Control Adapter.
+* Define Parameter Names and Types here to allow your IDE to know what they are
+* if and when accessing the data within your App
+* */
+export interface EndpointParams extends ParamNode {
+  /* Add any Parameters you'll be using to this interface, such as this example*/
+  example: string;
+}
+
+const App = () => {
+
+  // Connect to the Odin Control Adapter you specified.
+  // More endpoints for other adapters can be created.
+-  const endpoint = useAdapterEndpoint<EndpointParams>("reactworkshop", import.meta.env.VITE_ENDPOINT_URL);
++ const endpoint = useAdapterEndpoint<EndpointParams>("reactworkshop", import.meta.env.VITE_ENDPOINT_URL, 1000);
+  return (
+    <OdinApp title="React Workshop">
+      <Page endpoint={endpoint}/>
+    </OdinApp>
+  )
+}
+
+export default App
+
 ```
-Make this change, and then return to the Browser to see that the number now updates. You can also see that it is working by checking the terminal output from `Odin Control` and see the repeated GET requests:
-```bash
-[D 250729 14:41:19 controller:84] GET request received at path: 
-[D 250729 14:41:19 server:138] 200 GET /api/0.1/workshop (127.0.0.1) 1.33ms
-[D 250729 14:41:20 controller:84] GET request received at path: 
-[D 250729 14:41:20 server:138] 200 GET /api/0.1/workshop (127.0.0.1) 1.36ms
-[D 250729 14:41:21 controller:84] GET request received at path: 
-[D 250729 14:41:21 server:138] 200 GET /api/0.1/workshop (127.0.0.1) 1.34ms
-[D 250729 14:41:22 controller:84] GET request received at path: 
-[D 250729 14:41:22 server:138] 200 GET /api/0.1/workshop (127.0.0.1) 1.30ms
-```
+Make this change, and then return to the Browser to see that the number now updates. The `AdapterEndpoint` object is now refreshing it's copy of the Parameter Tree as often as we've told it to.
 
 ### Creating A Component that uses the Endpoint
 
