@@ -204,7 +204,7 @@ Feel free to use the generated controls to get a feel for how the various GUI co
 
 Now that you have a starting point, we can begin to build upon this to add specific controls with the Adapter!
 
-### Remove the Auto Generated Controls
+## Remove the Auto Generated Controls
 
 Whilst useful for testing a new GUI project, the generated controls are not designed for use in a final system. Our first step should be to remove these controls to replace them with our own specific design.
 
@@ -254,7 +254,7 @@ export default Page;
 
 With that removed, we can design the GUI ourselves.
 
-### Reading the Endpoint Data
+## Reading from the Adapter
 
 The endpoint provides a `data` object we can reference to display our parameters.
 If all we want is to show some value from a parameter without editing it, reading from this object is all we need to do. It handles all the `GET` requests and data parsing for us.
@@ -360,81 +360,60 @@ export default App
 ```
 Make this change, and then return to the Browser to see that the number now updates. The `AdapterEndpoint` object is now refreshing it's copy of the Parameter Tree as often as we've told it to.
 
-### Creating A Component that uses the Endpoint
+## Writing to the Adapter
 
-We now need to create a component that can not only read from the `endpoint`, but write to the Parameters. We can do this with the [WithEndpoint](https://github.com/stfc-aeg/odin-react/wiki/WithEndpoint) Higher Order Component, which will return a component that has the required props and event handlers to make use of the `Endpoint`.
+We can now see one of the Parameters from the Adapter, and see it update. But we almost certainly also want to be able to make changes in the Adapter to control various things.
 
-Odin React provides some standard Endpoint Components already wrapped by WithEndpoint, but for the purposes of this Workshop we will do this manually.
+To do so easily, Odin React provides a handful of `Endpoint Components` designed for this exact purpose.
 
-Lets start with a [textbox](https://react-bootstrap.netlify.app/docs/forms/form-control):
-``` TSX
-// TemplatePage.tsx
+### Adding a Textbox
 
-import { TitleCard } from "odin-react"
-//import the WithEndpoint wrapper from odin-react
-import { WithEndpoint } from 'odin-react';
+To start with, add an [EndpointInput](https://stfc-aeg.github.io/odin-react/?path=/docs/components-withendpoint-endpointinput--docs) to control the value of a string Parameter. We can create a new [TitleCard](https://stfc-aeg.github.io/odin-react/?path=/docs/components-titlecard--docs) to contain these new controls next to the badge display we created earlier.
 
+**Editing `src/Page.tsx`**
 
-import Container from "react-bootstrap/Container";
-import Row from 'react-bootstrap/Row';
-import Col from 'react-bootstrap/Col';
+```diff
+- import { TitleCard } from "@dssg/odin-react";
++ import { TitleCard, EndpointInput } from "@dssg/odin-react";
+import type { AdapterEndpoint } from "@dssg/odin-react";
+- import { Container, Row, Col, Badge } from 'react-bootstrap';
++ import { Container, Row, Col, Badge, Inputgroup } from 'react-bootstrap';
+import { type EndpointParams } from "./App";
 
-import Badge from "react-bootstrap/Badge";
+interface PageProps {
+    endpoint: AdapterEndpoint<EndpointParams>
+}
 
-//import the Form component from bootstrap
-import Form from 'react-bootstrap/Form';
-
-import type { AdapterEndpoint_t } from 'odin-react';
-
-//declare a new component based on the Form.Control, using WithEndpoint
-//notice that we do not provide it with the endpoint or anything at this stage. We've basically just made a new component we can then use.
-//also notice that this component must be created outside our actual Page component to avoid it being recreated every time that Page rerenders, and losing state.
-const EndpointInput = WithEndpoint(Form.Control);
-
-...
-
-```
-
-> [!NOTE]
-> Components created using `WithEndpoint` automatically make some assumptions about what you want them to do depending on the type of component and data it points to in the `AdapterEndpoint`. A `WithEndpoint` wrapped Button will, for instance, assume you want it to trigger when clicked, with whatever value you provide.
-> 
-> If you do not provide a value, a `WithEndpoint` component will use the value read from the Parameter Tree, at whatever path you point it at.
-
-Now we've created this `EndpointInput` component, we can use it to interact with the Odin Control Adapter, via the `AdapterEndpoint`. This automates a lot of the data handling for the HTTP requests.
-
-We can also still treat it like the original `Form.Control` that it wraps, and so can label it using some of the other [Bootstrap Form Components](https://react-bootstrap.netlify.app/docs/forms/overview):
-
-``` TSX
-// TemplatePage.tsx
-
-import Form from 'react-bootstrap/Form';
-import InputGroup from 'react-bootstrap/InputGroup';
-
-...
-
+const Page = ({
+    endpoint
+}: PageProps) => {
+    
     return (
         <Container>
-        <Row>
-        <Col>
-            <TitleCard title="Demo">
-                {/* Get the parameter out of the tree just using Dot Notation */}
-                Random Number: <Badge>{endpoint.data.rand_num}</Badge>
-            </TitleCard>
-        </Col>
-        <Col> {/*We can do the input in a separate Titlecard to demonstrate how the Rols/Cols work*/}
-            <TitleCard title="WithEndpoint">
-                {/*endpoint and fullpath are the only two REQUIRED props for a WithEndpoint component*/}
-                <InputGroup>
-                    <InputGroup.Text>String Input</InputGroup.Text>
-                    <EndpointInput endpoint={endpoint} fullpath="string_val"/>
-                </InputGroup>
-            </TitleCard>
-        </Col>
-        </Row>
+            <Row>
+                <Col>
+                    <TitleCard title="Demo">
+                        Random Number: <Badge>{endpoint.data?.rand_num ?? "Unknown"}</Badge>
+                    </TitleCard>
+                </Col>
+-           </Row>
+-           <Row>
+                <Col>
++                   <TitleCard title="Controls">
++                       <InputGroup>
++                           <InputGroup.Text>String Input</InputGroup.Text>
++                           <EndpointInput endpoint={endpoint} fullpath="string_val"/>
++                       </InputGroup>
++                   </TitleCard>
+                </Col>
+            </Row>
         </Container>
     )
 }
+
+export default Page;
 ```
+
 
 This textbox will automatically display the current value from the `AdapterEndpoint` Parameter Tree, and will do a PUT request to the path specified if you change the value and hit the Enter key. If we return to the browser, the changes made to the page should have been reloaded and the Input but now visible:
 
@@ -450,69 +429,89 @@ And when changing the value, the input is highlighted to show that it has been m
 
 If you then hit the Enter key whilst editing the text within the box, it will be sent to the Adapter. You should see something similar to the following in the terminal running Odin Control:
 
-```bash
-[D 250714 15:45:38 server:138] 204 OPTIONS /api/0.1/workshop (127.0.0.1) 1.05ms
-[D 250714 15:45:38 controller:92] PUT request received at path:  with data {'string_val': 'String Value'}
-[D 250714 15:45:38 controller:84] GET request received at path: 
-[D 250714 15:45:38 server:138] 200 PUT /api/0.1/workshop (127.0.0.1) 1.74ms
+```
+[I 260713 14:54:57 controller:92] PUT request received at path: string_val with data {'value': 'String Value'}
 ```
 
 The `EndpointInput` component can also be used for other Parameters in the same way, including numerical ones.
 
->[!NOTE]
-> `WithEndpoint` wrapped components will utilize the metadata provided by the Parameter Tree. If a Parameter is not defined as *Writeable*, the component will be disabled so that the user can visually see it is not an editable field.
+>[!TIP]
+> `Endpoint components` will utilize the metadata provided by the Parameter Tree. If a Parameter is not defined as *Writeable*, the component will be disabled so that the user can visually see it is not an editable field.
 >
 > With numerical Parameters it will also use any *min* or *max* values defined in the metadata.
 
-`WithEndpoint` can also be used to create other endpoint connected components, like [buttons](https://react-bootstrap.netlify.app/docs/components/buttons) and [dropdowns](https://react-bootstrap.netlify.app/docs/components/dropdowns). It works the same way the `EndpointInput` did, automatically detecting what should trigger a PUT request.
 
-### Another WithEndpoint Component
+### Adding a Button
 
-Lets now make a second component that can interact with the Adapter in a similar way to the textbox previously created. This time, we'll make a [Button](https://react-bootstrap.netlify.app/docs/components/buttons)
+Lets now add an [EndpointButton](https://stfc-aeg.github.io/odin-react/?path=/docs/components-withendpoint-endpointbutton--docs) to the same page, to trigger some sort of event in the Adapter.
 
-We can once again wrap the `Button` component with the `WithEndpoint` HOC to create another new Component with all the required Props.
+We can also provide it with any of the `props` that the normal component would use. These `props` get passed to the underlying component; in this case, the bootstrap `Button`. We can demonstrate this by using the `variant` prop of the button.
 
-```TSX
+```diff
+- import { EndpointInput, TitleCard } from "@dssg/odin-react";
++ import { EndpointButton, EndpointInput, TitleCard } from "@dssg/odin-react";
+import type { AdapterEndpoint } from "@dssg/odin-react";
+import { Container, Row, Col, Badge, InputGroup } from 'react-bootstrap';
+import { type EndpointParams } from "./App";
 
-...
-import Button from "react-bootstrap/Button";
+interface PageProps {
+    endpoint: AdapterEndpoint<EndpointParams>
+}
 
-const EndpointInput = WithEndpoint(Form.Control);
-const EndpointButton = WithEndpoint(Button);
+const Page = ({
+    endpoint
+}: PageProps) => {
+    
+    return (
+        <Container>
+            <Row>
+                <Col>
+                    <TitleCard title="Demo">
+                        Random Number: <Badge>{endpoint.data?.rand_num ?? "Unknown"}</Badge>
+                    </TitleCard>
+                </Col>
+                <Col>
+                    <TitleCard title="Controls">
+                        <InputGroup>
+                            <InputGroup.Text>String Input</InputGroup.Text>
+                            <EndpointInput endpoint={endpoint} fullpath="string_val"/>
+                        </InputGroup>
++                       <EndpointButton endpoint={endpoint} fullpath="trigger"
++                       value="Triggered Value" variant="success">
++                           Trigger
++                       </EndpointButton>
+                    </TitleCard>
+                </Col>
+            </Row>
+        </Container>
+    )
+}
 
-```
-
-Like before, we can use this component within our Template page. This time, we want to provide it with a value that it will send to the Adapter when clicked, instead of it reading the initial value from the adapter like the Textbox example does.
-
-We can also provide it with any of the `props` that the wrapped component would use. These `props` get ignored by the `WithEndpoint` layer, and passed down through to the underlying component; in this case, the `Button`. We can demonstrate this by using the `variant` prop of the button.
-
-```TSX
-
-...
-
-<InputGroup>
-    <InputGroup.Text>String Input</InputGroup.Text>
-    <EndpointInput endpoint={endpoint} fullpath="string_val"/>
-    {/*Use the EndpointButton component, passing it a value and a Variant for styling*/}
-    <EndpointButton endpoint={endpoint} fullpath="trigger" 
-    value="Triggered Value" variant="success">
-        Trigger
-    </EndpointButton>
-</InputGroup>
-
-...
-
+export default Page;
 ```
 <p align="center">
 <img src="./images/react_workshop_added_button.png"/>
 </p>
 
-> [!NOTE]
-> When assigning a value to a WithEndpoint wrapped component, that value does not have to be hardcoded in the way demonstrated above. It could just as easily be the value written into a textbox, or a State, or calculated from anything else within the GUI.
+Clicking this button should should show something similar to the following in the terminal running Odin Control:
+```
+[I 260713 15:21:38 controller:92] PUT request received at path: trigger with data {'value': 'Triggered Value'}
+[W 260713 15:21:38 controller:80] Event Triggered by API with value: Triggered Value
+```
 
-### Exercise: Make a Toggle Endpoint
+>[!NOTE]
+> We didn't provide the `EndpointInput` component a value, but we do with the `EndpointButton` component. If an `Endpoint Component` is not provided a `value` prop, it will always use the value read from the Parameter Tree. This is fine for input boxes, but buttons and similar components might want to send a specific value when clicked.
+>
+> When assigning a value to one of these components, that value does not have to be a simple hardcoded string like this example. You might want to calculate a value based on other Parameters, or even use React `State` variables (which are explained later in this workshop)
 
-Now try to create another Endpoint connected component using the same method as before. Try using the [Bootstrap Switch](https://react-bootstrap.netlify.app/docs/forms/checks-radios#switches) to set the boolean parameter `toggle`.
+
+### Exercise: Add More Controls
+
+Try adding more controls to the page, referring to the [Interactive Documentation](https://stfc-aeg.github.io/odin-react/) to see what other components are available. The list of Endpoint Components is shown under the `WithEndpoint` folder in the sidebar.
+
+For instance, try using the `EndpointInput` again, but this time for the `num_val` parameter to see how it changes when used for an integer.
+
+You could also try using the [EndpointDropdown](https://stfc-aeg.github.io/odin-react/?path=/docs/components-withendpoint-endpointdropdown--docs) component to control a Parameter with limited potential values. The `selected` Parameter on the Demo Adapter uses metadata to specify *Allowed Values*, which the dropdown component will use to generate a dropdown menu automatically.
 
 ## Error Handling
 
