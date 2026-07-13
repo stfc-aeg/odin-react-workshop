@@ -13,19 +13,25 @@
 - Designed to streamline, speed up, and unify GUI development for our detector projects
 - Uses [Axios](https://axios-http.com/docs/intro) to handle HTTP requests. Axios is a promise based client that handles request and response serialization.
 
+Odin React uses [Storybook](https://storybook.js.org/) to document, demo, and test. For more details, see the links below:
+- [Interactive Documentation](https://stfc-aeg.github.io/odin-react/)
+- [Live Demo](https://stfc-aeg.github.io/odin-react/iframe.html?id=demo-page--default&viewMode=story)
+
 ## What is React?
 
 - A Javascript based library that allows for the creation of *Components*; individual reusable UI elements that can their own logic and state.
     - these components are Javascript Functions that return markup:
-    ```javascript
-    function MyButton() {
-        // Notice Components always start with capital letters
-        // to differentiate from standard HTML tags
-        return(
-            <button>I'm a button</button>
-        );
-    }
-    ```
+
+```javascript
+function MyButton() {
+    // Notice Components always start with capital letters
+    // to differentiate from standard HTML tags
+    return(
+        <button>I'm a button</button>
+    );
+}
+```
+
 - This markup syntax is called **JSX**, which is what allows for the mixture of html and javascript within a single file and object.
 - Components can be provided with arguments, called *props*, for various purposes. These are passed to the component like *html attributes*, and become an object parameter in the component function that can be [destructured](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/Destructuring).
 
@@ -56,26 +62,21 @@
 
 ### useAdapterEndpoint
 - Provides all the RESTful API methods to interact with the Odin Control Adapter Parameter Tree
-- Maintains a local copy of the Parameter tree
+- Caches a copy of the Parameter tree
     - And the Metadata, if the adapter supports it.
-- Can be setup to make periodic requests of the Adapter to monitor updating data
+- Can be setup to make repeated requests of the Adapter to monitor updating data
 - Has error handling in case of HTTP errors, such as loss of connection or incorrectly done requests.
 
-### WithEndpoint
-- Wraps an existing Component to automate its connection to an Endpoint, creating a modified component that can then be reused.
-- Provides event handlers that will perform http PUT requests as required.
-- Supports buttons, text input, dropdowns, checkboxes, radio buttons, and more, automatically.
-- Can be provided with functions to run before and/or after the PUT request
-- Can monitor the value within the Endpoint Parameter Tree and display up to date data if changed.
-- Utilizes Parameter Metadata to limit input options, such as an integer input having a Minimum and Maximum.
+### Endpoint Components
+- Pre-existing Input components (such as buttons or text boxes) with added functionality to automatically work with an Adapter Endpoint, performing PUT requests whenever appropriate.
+    - For example, the `EndpointButton` component will do the PUT request whenever clicked.
+    - An `EndpointInput` will PUT whenever the Enter key is hit while typing in the textbox.
 
-Odin React provided some standard WithEndpoint wrapped components by default, 
-
-## OdinApp
+### OdinApp
 - A top level component that provides a navigation bar, routing to multiple pages, and a display for potential errors if something goes wrong.
 - Should contain all the pages of a GUI, to properly render and navigate between them.
 
-## Model-View-Controller Design Pattern
+### Model-View-Controller Design Pattern
 - Odin Control and Odin React are designed to separate *business logic* from the GUI presentation.
 - The GUI should not implement control logic, but should trigger events within the Adapter to do so.
 
@@ -84,21 +85,21 @@ Odin React provided some standard WithEndpoint wrapped components by default,
 ---
 # Workshop
 
-The workshop will involve making sure we have an Odin Control instance running to interact with, and then using [Cookiecutter](https://www.cookiecutter.io/) to instantiate a React Application using one of the available templates.
+The workshop will involve making sure we have an Odin Control instance running to interact with, and then using a **Template Project** to start developing the GUI.
 
-The workshop requires a python virtual environment of either `3.10` or `3.11`. Odin Control is currently incompatible with `3.12` but will soon be updated to allow this.
+The workshop requires a python virtual environment compatiable with Odin Control. This is currently `3.8` or above.
 
-The workshop also requires `node.js`, which can be sourced from `/aeg_sw/apps` via `module load` if running this workshop from a machine connected to our network.
+The workshop also requires [nodejs](https://nodejs.org/en), which can be sourced from `/aeg_sw/apps` via `module load` if running this workshop from a machine connected to the DSSG network.
 
 ## Installing The Adapter
 
-- An Odin Control Adapter is available for use within this workshop which will provide a parameter tree we can interact with using our GUI.
+- An Odin Control Adapter is available for use with this workshop which will provide a parameter tree we can interact with using our GUI.
 
-- To install it, navigate to the `control` directory within this repo and, using your preferred virtual environment (version 3.10 or higher), install the adapter:
+- To install it, navigate to the `control` directory within this repo and, using your preferred python environment, install the adapter:
 
 ```bash
 cd control
-pip install -e .
+pip install .
 ```
 
 Run the adapter:
@@ -115,51 +116,52 @@ With a basic Odin Control instance running, we can begin creating the GUI for th
 > 
 > Once the GUI is completed, it can be compiled into static code and served by Odin Control as a static resource. While developing, the GUI will be served standalone on a different address and port than Odin Control, which means it must be configured to accept CORS (Cross Origin Sharing) requests.
 
-In a new terminal, create a directory to contain the React project, and then move into it. Standard practice is one of two options:
--  either within the `web/static` (*or test/static in older projects*) path of the Odin Control project
-- in its own directory alongside the `control` and/or `data` directory of a larger Odin project
-
+Using `npm` (the `nodejs` package manager), we can use the available Template Project from the web. In a new terminal:
 ```bash
-# during development, the exact location of the React code does not matter
-# As it will not yet be served statically by Odin Control
-mkdir react
-cd react
+# The new terminal should be in the same directory as the Odin Control project
+cd control
 
-# Within a python Virtual Environment (this can be the same one as before), ensure `cookiecutter`is installed. This tool allows us to automatically download and build upon templates:
+# This command fetches the templated Odin React project from npmjs.com, the package management site. It's similar to Python's PyPI.org.
+npm create @dssg/odin-react
 
-pip install cookiecutter
-
-# Using cookie cutter, create a new project from one of the available templates:
-cookiecutter git+ssh://git@github.com/stfc-aeg/odin-react-template
 ```
 
-Cookiecutter will then provide prompts to select which template to use, and setup other values ready for the project. We're going to use the Typescript template, as using Typescript instead of Javascript gives us more control during development. It still compiles into standard Javascript when it runs or is built into the final application:
-
+This should then provide us with a series of prompts on the command line to customise the template. Make sure your responses match those shown here:
 ```bash
-# Options from cookiecutter. Ideally, you should follow these options for the workshop:
-Select a template
-    1 - Javascript Template (javascript)
-    2 - Typescript Template (typescript)
-    Choose from [1/2] (1): 2
-  [1/6] Set the name of the project (Project Name): React Workshop
-  [2/6] Set the name of the package (reactworkshop): 
-  [3/6] Name of the adapter that the default template will connect to (reactworkshopAdapter): workshop
-  [4/6] Name the main folder the application will be in (app): 
-  [5/6] The default endpoint of the Odin Control instance (http://localhost:8888): http://localhost:8888
-  [6/6] Include the optional Plotly package for graphing [y/n] (n): no
+┌  Create Odin React GUI
+│
+◇  GUI App Project Name
+│  React Workshop
+│
+◇  GUI App Root Directory
+│  web/static
+│
+◇  Name of the Adapter to connect to
+│  reactworkshop
+│
+◇  URL of the Odin Control API
+│  http://localhost:8889
+│
+◇  Include Plotly graphing Package?
+│  No
+│
+◇  Install and run Dev Server?
+│  Yes
 ```
 
-Once created, you need to ensure the dependencies are installed and ready, and then you can start developing the app:
+You'll then see the output below, showing that it is copying and installing the template. Do note that the Dependency Installation step may take a few minutes.
 
-```bash
-cd app
-    # nodejs is the javascript runtime environment that allows us to use React. Source it from the DSSG module files on the network.
-module load nodejs
-    # this step will install all the dependencies declared in package.json. It may take a few minutes
-npm install
-
-    # after installation of the dependencies is completed, run the development server:
-npm run dev
+```
+│
+◇  Initialising...
+│
+◇  Scaffolding Completed
+│
+◇  Updating package.json...
+│
+◇  Setting Adapter API config...
+│
+◇  Installing Dependencies with NPM...
 ```
 
 When running, the development server will display the address of the webpage it is serving. It will also monitor the React project's codebase, and will reload the server if anything changes.
@@ -173,14 +175,31 @@ Terminal Output:
   ➜  press h + enter to show help
 ```
 
+>[!IMPORTANT]
+> If you do not see this output, you may have told the template not to automatically install and run, or you may have accidentally shut the server down. In which case, you'll need to run the following commands:
+>
+> ```bash
+> cd web/static
+> 
+> # this step will install all the dependencies declared in "package.json" if they are not already. It may take a few minutes
+> npm install
+> 
+> # after installation of the dependencies is completed, run the development server:
+> npm run dev
+> ```
+
 Open this address in your web browser of choice (Odin React has been developed to explicitly support either **Firefox** or **Chrome**) and you should see something like the following:
 <p align="center">
 <img src="./images/react_workshop_initial.png"/>
 </p>
 
+>[!IMPORTANT] This inital state of the React GUI grabs the full Parameter Tree from your Odin Control server and displays some auto-generated controls based on the response.
+>
+> If for some reason you do not see these controls, and/or see warnings about the connection, check that your Odin Control server is running and that the address used when copying the React Template matches the one Odin Control is listening on.
+
 ## Begin developing the React Project
 
-Now that you have a starting point, we can begin to build upon this to add interactivity with the Adapter!
+Now that you have a starting point, we can begin to build upon this to add specific controls with the Adapter!
 
 ### Modify the AdapterEndpoint
 
