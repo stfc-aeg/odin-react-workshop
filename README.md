@@ -636,12 +636,141 @@ export default NewPage;
 
 ```
 
-## Layout
+## Using Typescript to define the Parameter Tree
 
-- Odin React is designed to make use of the [Bootstrap Grid Layout](https://react-bootstrap.netlify.app/docs/layout/grid)
-- Organise page contents using the `Row` and `Col` components
-    - Bootstrap provides means to set the width of the columns as shown [Here](https://react-bootstrap.netlify.app/docs/layout/grid#setting-one-column-width). The grid classes shown split the width of the container into **12**, so setting a grid class to **6** would set it to take up half the space available.
-- Group related controls and components within a [Title Card](https://github.com/stfc-aeg/odin-react/wiki/TitleCard)
+As mentioned earlier in the workshop, your editor may report errors when using the `AdapterEndpoint` `data` object. This is because your editor has no way of knowing what properties are available on that object, and so we need to tell it the expected shape of the Parameter Tree. We can do this using another [Typescript Interface](https://www.typescriptlang.org/docs/handbook/2/objects.html).
+
+>[!TIP]
+> The reason our GUI still worked when we ignored the error at the start is because Typescript compiles to plain Javascript, which does not have typing. 
+> The type definitions in Typescript are useful while developing to flag bugs that would go otherwise unnoticed, and to allow your editor/IDE to know what properties or functions might be available on certain objects.
+
+Note that the GUI project already defines an interface called `EndpointParams` in the `src/App.tsx` file:
+
+```typescript
+/**An Interface to define the shape of the Parameter Tree from the Odin Control Adapter.
+* Define Parameter Names and Types here to allow your IDE to know what they are
+* if and when accessing the data within your App
+* */
+export interface EndpointParams extends ParamNode {
+  /* Add any Parameters you'll be using to this interface, such as this example*/
+  example: string;
+}
+```
+
+We can add the Parameters and their types that we know exist on the Parameter Tree to this interface so that our editor knows what the shape of the `data` object will be.
+
+First, check the Parameter Tree defined by our Adapter:
+
+```python
+# control/src/reactworkshop/controller.py
+# ...
+class ReactWorkshopController(BaseController):
+    """Controller class for ReactWorkshop."""
+
+    def __init__(self, options):
+        self.options = options
+
+        self.string_val = "String Value Test"
+        self.num_val = 20
+        self.random_num = random.randint(0, 100)
+
+        self.selection_list = ["Monday", "Tuesday", "Wednesday",
+                               "Thursday", "Friday", "Saturday", "Sunday"]
+        self.selected = "Monday"
+        self.toggle = True
+
+        self.loop = PeriodicCallback(self.looping_update, 500)
+        self.loop.start()
+
+        self.param_tree = ParameterTree({
+            "string_val": (lambda: self.string_val, self.set_string),
+            "num_val": (lambda: self.num_val, self.set_num_val,
+                        {  # metadata
+                            "min": 15,
+                            "max": 76
+                        }),
+            "num_details": {
+                "is_even": (lambda: not (self.num_val % 2), None),
+                "half": (lambda: self.num_val / 2, None)
+            },
+            "rand_num": (lambda: self.random_num, None),
+            "selected": (lambda: self.selected, self.set_selection,
+                         {  # metadata
+                             "allowed_values": self.selection_list
+                         }),
+            "toggle": (lambda: self.toggle, self.set_toggle),
+            "trigger": (None, self.trigger_event),
+            "broken": (None, self.throw_error)
+        })
+# ...
+```
+
+Based on what we've defined in the Adapter, we can tell our `AdapterEndpoint` what to expect when it fetches the whole tree:
+
+**Editing `web/static/src/App.tsx`**
+```diff
+import 'bootstrap/dist/css/bootstrap.min.css';
+
+import { OdinApp, useAdapterEndpoint, type ParamNode } from "@dssg/odin-react";
+import Page from "./Page";
+import NewPage from './NewPage';
+
++/** String literals for the selected Parameter*/
++type DaysOfWeek = "Monday" | "Tuesday" | "Wednesday"| "Thursday"|
++                  "Friday" | "Saturday" | "Sunday"
+
+/**An Interface to define the shape of the Parameter Tree from the Odin Control Adapter.
+* Define Parameter Names and Types here to allow your IDE to know what they are
+* if and when accessing the data within your App
+* */
+export interface EndpointParams extends ParamNode {
+- /* Add any Parameters you'll be using to this interface, such as this example*/
+- example: string;
++ string_val: string;
++ num_val: number;
++ /* interfaces can be nested*/
++ num_details: {
++   is_even: boolean;
++   half: number;
++ }
++ rand_num: number;
++ selected: DaysOfWeek;
++ toggle: boolean;
++ trigger: null;
+}
+
+const App = () => {
+
+  // Connect to the Odin Control Adapter you specified.
+  // More endpoints for other adapters can be created.
+  const endpoint = useAdapterEndpoint<EndpointParams>("reactworkshop", import.meta.env.VITE_ENDPOINT_URL, 1000);
+
+  return (
+    <OdinApp title="React Workshop" navLinks={["Home", "New Page"]}>
+      <Page endpoint={endpoint}/>
+      <NewPage />
+    </OdinApp>
+  )
+}
+
+export default App
+
+```
+
+With the interface defined, your editor should know what Parameters are available on the Parameter Tree, and any errors previously seen should vanish. This also allows the editor to flag when you're trying to use a Parameter it does not think exists.
+
+>[!NOTE]
+> We defined a type called `DaysOfWeek` to use for the `selected` parameter. This is a [Literal String Union](https://www.typescriptlang.org/docs/handbook/2/everyday-types.html#literal-types) type.
+> We could have defined it just as a `string`, but it can be helpful to be more specific when possible so typos are automatically flagged. For instance, trying to set the value to `"Fryday"` wouldn't be caught as an issue if defined as `string`, but will be when defined with this custom type.
+
+>[!TIP]
+> Because Typescript has no effect at runtime and does not actually define what the `AdapterEndpoint` will receive when fetching the Parameter Tree, we do not need to define every single parameter if the Adapter's tree is large and complex. We can define an interface that only specifies the Parameters we are using to keep things simple.
+
+## Compiling a finished GUI
+
+
+# Workshop Complete!
+
 
 ## Custom CSS Styling
 
@@ -652,7 +781,7 @@ export default NewPage;
 If custom styling is required, it's recommended that you use a [CSS module](https://github.com/css-modules/css-modules), rather than importing a plain css file. CSS Modules scope class names locally, avoiding clashes
 
 ```TSX
-//example.tsx
+//An example. Not added to actual Workshop GUI
 
 ...
 
