@@ -193,6 +193,8 @@ Open this address in your web browser of choice (Odin React has been developed t
 <img src="./images/react_workshop_initial.png"/>
 </p>
 
+Feel free to use the generated controls to get a feel for how the various GUI components interact with your Odin Control adapter.
+
 >[!IMPORTANT] This inital state of the React GUI grabs the full Parameter Tree from your Odin Control server and displays some auto-generated controls based on the response.
 >
 > If for some reason you do not see these controls, and/or see warnings about the connection, check that your Odin Control server is running and that the address used when copying the React Template matches the one Odin Control is listening on.
@@ -200,6 +202,57 @@ Open this address in your web browser of choice (Odin React has been developed t
 ## Begin developing the React Project
 
 Now that you have a starting point, we can begin to build upon this to add specific controls with the Adapter!
+
+### Remove the Auto Generated Controls
+
+Whilst useful for testing a new GUI project, the generated controls are not designed for use in a final system. Our first step should be to remove these controls to replace them with our own specific design.
+
+With your preferred code editor, open `control/web/static/src/Page.tsx` and make the following changes:
+
+```diff
+- import { TitleCard, ParamController } from "@dssg/odin-react";
++ import { TitleCard } from "@dssg/odin-react";
+import type { AdapterEndpoint } from "@dssg/odin-react";
+import { Container, Row, Col } from 'react-bootstrap';
+import { type EndpointParams } from "./App";
+
+interface PageProps {
+    endpoint: AdapterEndpoint<EndpointParams>
+}
+
+const Page = ({
+    endpoint
+}: PageProps) => {
+
+    return (
+        <Container>
+            <Row>
+                <Col>
+                    <TitleCard title="Demo">
+                        A Basic page using Bootstrap's Row/Col grid layout.
+                        Use this as a starting point for your GUI.
+                        <br />
+                        Below is an auto-generated set of controls for your
+                        adapter to test and confirm the connection is working.
+                        This should not be used in the final GUI and is for debug
+                        purposes only
+                    </TitleCard>
+                </Col>
+            </Row>
+            <Row>
+                <Col>
+-                   <ParamController endpoint={endpoint} title="reactworkshop"/>
+                </Col>
+            </Row>
+        </Container>
+    )
+}
+
+export default Page;
+```
+
+With that removed, we can add our own specific controls.
+
 
 ### Modify the AdapterEndpoint
 
